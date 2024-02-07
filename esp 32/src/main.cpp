@@ -15,7 +15,7 @@ bool is_broadcast(uint8_t* mac){
           );
 }
 
-bool i_m_gateway=false;
+bool i_m_gateway=true;
 
 // Funzione per convertire una stringa MAC in un array di byte
 void macStrToByteArray(const String &macStr, uint8_t *macArray) {
@@ -48,10 +48,10 @@ uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 String success;
 
 typedef struct struct_message {
-    char type[100];
+    char type[20];
     char text[100]; 
-    char source[100];
-    char dest[100]; 
+    char source[30];
+    char dest[30]; 
 } struct_message;
 
 String temp;
