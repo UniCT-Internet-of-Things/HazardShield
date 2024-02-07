@@ -19,6 +19,7 @@ class MyServerCallbacks : public BLEServerCallbacks {
   }
 
   void onDisconnect(BLEServer *pServer) {
+    BLEDevice::startAdvertising();
     Serial.println("Device disconnected");
   }
 };
@@ -36,7 +37,7 @@ class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
 void setup() {
   Serial.begin(115200);
   Serial.println("Starting BLE work!");
-  BLEDevice::init("Arduino");
+  BLEDevice::init("Braccialetto");
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
   BLEService *pService = pServer->createService(SERVICE_UUID);

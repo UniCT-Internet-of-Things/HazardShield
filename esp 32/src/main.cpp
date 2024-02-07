@@ -3,6 +3,7 @@
 #include <ArduinoBLE.h>
 #include <Wire.h>
 #include <TaskScheduler.h>
+#include <ArduinoJson.h>
 
 bool is_broadcast(uint8_t* mac){
   return (mac[0]==0xff&&
@@ -47,9 +48,10 @@ uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 String success;
 
 typedef struct struct_message {
-    String type;
-    String text; 
-    String dest; 
+    char type[100];
+    char text[100]; 
+    char source[100];
+    char dest[100]; 
 } struct_message;
 
 String temp;
@@ -63,6 +65,137 @@ struct_message message;
 esp_now_peer_info_t peerInfo;
 esp_now_peer_info_t peerInfo2;
 esp_now_peer_info_t peerInfo3;
+
+Scheduler ts;
+
+void readBLE();
+void sendBLE();
+Task ReadBLE(5000,TASK_FOREVER,&readBLE,&ts,true);
+Task SendBLE(100,TASK_FOREVER,&sendBLE,&ts,true);
+
+JsonDocument MacAddress;
+
+#define TEMPERATURE_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SATURATION_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
+#define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
+
+void sendBLE(){
+  if(MacAddress.size()==0){
+    return;
+  }
+  String BLEmessage;
+  serializeJson(MacAddress, BLEmessage);
+
+  strcpy(message.type,String("BraceletData").c_str());
+  message.type[String("BraceletData").length()]='\0';
+
+  strcpy(message.source,WiFi.macAddress().c_str());
+  message.source[WiFi.macAddress().length()]='\0';
+
+  strcpy(message.text,BLEmessage.c_str());
+  message.text[BLEmessage.length()]='\0';
+
+  strcpy(message.dest,String("1:1:1:1:1:1").c_str());
+  message.dest[String("1:1:1:1:1:1").length()]='\0';
+  
+
+
+  if(!is_broadcast(remote_wifi_prec)){
+    esp_err_t result = esp_now_send(remote_wifi_prec, (uint8_t *) &message, sizeof(message));
+    if (result == ESP_OK) {
+    Serial.println("Sent with success");
+    Serial.println();
+    }
+    else {
+      Serial.println("Error sending the data");
+      Serial.println();
+    }
+  }
+  else{
+    Serial.println("sarebbe Broadcast beddu");
+  }
+  MacAddress.clear();
+}
+
+void readBLE(){
+  BLE.scanForName("Braccialetto");
+  for(int i = 0; i < 50; i++){
+    BLEDevice peripheral = BLE.available();
+    if(peripheral){
+      //se peripheral.address() è già presente in MacAddressArray non fare nulla
+      if(MacAddress.containsKey(peripheral.address())){
+        continue;
+      }
+      else{
+        Serial.println("Address: " + peripheral.address());
+        BLE.stopScan();
+        if (peripheral.connect()) {
+          Serial.println("Connected");
+        } else {
+          Serial.println("Failed to connect!");
+          BLE.scanForName("Arduino");
+          continue;
+        }
+
+        // discover peripheral attributes
+        Serial.println("Discovering attributes ...");
+        if (peripheral.discoverAttributes()) {
+          Serial.println("Attributes discovered");
+        } else {
+          Serial.println("Attribute discovery failed!");
+          peripheral.disconnect();
+          BLE.scanForName("Arduino");
+          continue;
+        }// retrieve the LED characteristic
+        BLECharacteristic TempCharacteristic = peripheral.characteristic(TEMPERATURE_CHARACTERISTIC_UUID);
+        BLECharacteristic SaturationCharacteristic = peripheral.characteristic(SATURATION_CHARACTERISTIC_UUID);
+        BLECharacteristic HeartbeatCharacteristic = peripheral.characteristic(HEARTBEAT_CHARACTERISTIC_UUID);
+
+        TempCharacteristic.read();
+        SaturationCharacteristic.read();
+        HeartbeatCharacteristic.read();
+
+        int tempLength = TempCharacteristic.valueLength();
+        int satLength = SaturationCharacteristic.valueLength();
+        int heartLength = HeartbeatCharacteristic.valueLength();
+
+        uint8_t tempValue[tempLength];
+        uint8_t satValue[satLength];
+        uint8_t heartValue[heartLength];
+
+        if (tempLength > 0) {
+          TempCharacteristic.readValue(tempValue, tempLength);
+          tempValue[tempLength] = '\0';
+          Serial.print("Temperature: ");
+          Serial.println((char*)tempValue);
+        }
+
+        if (satLength > 0) {
+          SaturationCharacteristic.readValue(satValue, satLength);
+          satValue[satLength] = '\0';
+          Serial.print("Saturation: ");
+          Serial.println((char*)satValue);
+        }
+
+        if (heartLength > 0) {
+          HeartbeatCharacteristic.readValue(heartValue, heartLength);
+          heartValue[heartLength] = '\0';
+          Serial.print("Heartbeat: ");
+          Serial.println((char*)heartValue);
+        }
+
+        char buffer[100];
+        snprintf(buffer, sizeof(buffer), "{Temperature: %s, Saturation: %s, Heartbeat: %s}", 
+          (char*)tempValue, (char*)satValue, (char*)heartValue);
+        MacAddress[peripheral.address()]=buffer;
+        peripheral.disconnect();
+      }
+      
+    }
+  }
+  serializeJsonPretty(MacAddress, Serial);
+}
+
 
 // Callback when data is sent
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
@@ -84,8 +217,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
   Serial.println("");
 
-  if(incomingReadings.type.equals("new node")){
-    macStrToByteArray(incomingReadings.text,remote_wifi_next);
+  if(String(incomingReadings.type).equals("new node")){
+    macStrToByteArray(incomingReadings.source,remote_wifi_next);
     Serial.println("nuovo nodo aggiunto");
 
     memcpy(peerInfo3.peer_addr, remote_wifi_next, 6);
@@ -97,7 +230,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       return;
     }
     BLE.stopAdvertise();
-  }else if(incomingReadings.dest.equals(WiFi.macAddress())){
+  }else if(String(incomingReadings.dest).equals(WiFi.macAddress())){
     Serial.println("arrivato a destinazione");
     Serial.println(incomingReadings.text);
   }
@@ -114,9 +247,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
          mac[0], mac[1], mac[2],
           mac[3], mac[4], mac[5]);
-    String mac_String(mac_str);
-
-    if(mac_String.equals(remote_wifi_prec_str)){
+    String mac_String(mac_str);if(mac_String.equals(remote_wifi_prec_str)){
       Serial.println("inoltro a next");
       if(!is_broadcast(remote_wifi_next)){
         esp_err_t result = esp_now_send(remote_wifi_next, (uint8_t *) &incomingReadings, sizeof(incomingReadings));
@@ -223,14 +354,23 @@ void setup() {
       return;
     }
     
-    message.type=String("new node");
-    message.text=WiFi.macAddress();
+  strcpy(message.type,String("new node").c_str());
+  message.dest[String("new node").length()]='\0';
+
+  strcpy(message.source,WiFi.macAddress().c_str());
+  message.dest[WiFi.macAddress().length()]='\0';
+
+  strcpy(message.text,String("").c_str());
+  message.dest[String("").length()]='\0';
+
+
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
           remote_wifi_prec[0], remote_wifi_prec[1], remote_wifi_prec[2],
           remote_wifi_prec[3], remote_wifi_prec[4], remote_wifi_prec[5]);
-    message.dest=String(mac_str);
 
+    strcpy(message.dest,String(mac_str).c_str());
+    message.dest[String(mac_str).length()]='\0';
 
     if(!is_broadcast(remote_wifi_prec)){
       esp_err_t result = esp_now_send(remote_wifi_prec, (uint8_t *) &message, sizeof(message));
@@ -249,24 +389,41 @@ void setup() {
 
     
   }
+  
+  ReadBLE.disable();
+  SendBLE.disable();
+
+  if(!i_m_gateway){
+    ts.addTask(ReadBLE);
+    ts.addTask(SendBLE);
+    ReadBLE.enable();
+    SendBLE.enable();
+  }
+  
+  
+  ts.startNow();
 }
 
 void loop() {
 
   if(false){
     delay(5000);
-    message.type=String("mess");
-    message.text=String("ciao");
+    
+    strcpy(message.type,String("mess").c_str());
+    strcpy(message.source,WiFi.macAddress().c_str());
+    strcpy(message.text,String("ciao").c_str());
+    
+
 
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
           broadcastAddress[0], broadcastAddress[1], broadcastAddress[2],
           broadcastAddress[3], broadcastAddress[4], broadcastAddress[5]);
 
-    message.dest=String(mac_str);
+    strcpy(message.dest,String(mac_str).c_str());
+
     Serial.print("destinatario nuovo messagio:   ");
     Serial.println(message.dest);
-
     if(!is_broadcast(remote_wifi_prec)){
       esp_err_t result = esp_now_send(remote_wifi_prec, (uint8_t *) &message, sizeof(message));
       if (result == ESP_OK) {
@@ -283,4 +440,5 @@ void loop() {
     }
     
   }
+  ts.execute();
 }
