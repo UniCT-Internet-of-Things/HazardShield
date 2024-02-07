@@ -15,7 +15,7 @@ bool is_broadcast(uint8_t* mac){
           );
 }
 
-bool i_m_gateway=true;
+bool i_m_gateway=false;
 
 // Funzione per convertire una stringa MAC in un array di byte
 void macStrToByteArray(const String &macStr, uint8_t *macArray) {
@@ -70,9 +70,10 @@ Scheduler ts;
 
 void readBLE();
 void sendBLE();
-Task ReadBLE(5000,TASK_FOREVER,&readBLE,&ts,true);
-Task SendBLE(100,TASK_FOREVER,&sendBLE,&ts,true);
+Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
+//Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
 
+bool data_ready=false;
 JsonDocument MacAddress;
 
 #define TEMPERATURE_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
@@ -80,7 +81,7 @@ JsonDocument MacAddress;
 #define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
 
 void sendBLE(){
-  if(MacAddress.size()==0){
+  if(MacAddress.size()==0&&data_ready){
     return;
   }
   String BLEmessage;
@@ -114,26 +115,35 @@ void sendBLE(){
   else{
     Serial.println("sarebbe Broadcast beddu");
   }
+  data_ready=false;
   MacAddress.clear();
 }
 
 void readBLE(){
   BLE.scanForName("Braccialetto");
+
   for(int i = 0; i < 50; i++){
+    
+    delay(50);
+
     BLEDevice peripheral = BLE.available();
     if(peripheral){
       //se peripheral.address() è già presente in MacAddressArray non fare nulla
       if(MacAddress.containsKey(peripheral.address())){
+        //Serial.println("again");
+        peripheral.disconnect();
         continue;
       }
       else{
         Serial.println("Address: " + peripheral.address());
         BLE.stopScan();
+
         if (peripheral.connect()) {
           Serial.println("Connected");
         } else {
           Serial.println("Failed to connect!");
-          BLE.scanForName("Arduino");
+          BLE.scanForName("Braccialetto");
+          peripheral.disconnect();
           continue;
         }
 
@@ -144,9 +154,9 @@ void readBLE(){
         } else {
           Serial.println("Attribute discovery failed!");
           peripheral.disconnect();
-          BLE.scanForName("Arduino");
+          BLE.scanForName("Braccialetto");
           continue;
-        }// retrieve the LED characteristic
+        }
         BLECharacteristic TempCharacteristic = peripheral.characteristic(TEMPERATURE_CHARACTERISTIC_UUID);
         BLECharacteristic SaturationCharacteristic = peripheral.characteristic(SATURATION_CHARACTERISTIC_UUID);
         BLECharacteristic HeartbeatCharacteristic = peripheral.characteristic(HEARTBEAT_CHARACTERISTIC_UUID);
@@ -187,13 +197,22 @@ void readBLE(){
         char buffer[100];
         snprintf(buffer, sizeof(buffer), "{Temperature: %s, Saturation: %s, Heartbeat: %s}", 
           (char*)tempValue, (char*)satValue, (char*)heartValue);
+        
         MacAddress[peripheral.address()]=buffer;
+        BLE.scanForName("Braccialetto");
         peripheral.disconnect();
       }
       
+      peripheral.disconnect();
     }
+
+    BLE.scanForName("Braccialetto");
+    peripheral.disconnect();
   }
+  
+  data_ready=true;
   serializeJsonPretty(MacAddress, Serial);
+  sendBLE();
 }
 
 
@@ -391,13 +410,13 @@ void setup() {
   }
   
   ReadBLE.disable();
-  SendBLE.disable();
+  //SendBLE.disable();
 
   if(!i_m_gateway){
     ts.addTask(ReadBLE);
-    ts.addTask(SendBLE);
+    //ts.addTask(SendBLE);
     ReadBLE.enable();
-    SendBLE.enable();
+    //SendBLE.enable();
   }
   
   
