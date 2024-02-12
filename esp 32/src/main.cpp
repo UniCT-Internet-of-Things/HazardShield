@@ -295,9 +295,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     else{
       if(i_m_gateway){
         Serial.println("invio lora");
-        //invia con lora 
-        BLE.
-
+        
       }
       Serial.println("inoltro a prec");
       int retry=0;

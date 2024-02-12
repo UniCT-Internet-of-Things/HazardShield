@@ -14,7 +14,8 @@ app = Flask(__name__,
 def ricevi_dati():
 
     print(request)
-    
+    #stampa tutta la struttura della richiesta
+    print(request.data)
     return 'Dati ricevuti con successo!'
 
 
