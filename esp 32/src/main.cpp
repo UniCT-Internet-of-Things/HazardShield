@@ -1,10 +1,9 @@
 #include <esp_now.h>
 #include <WiFi.h>
 #include <ArduinoBLE.h>
-#include <Wire.h>
 #include <TaskScheduler.h>
 #include <ArduinoJson.h>
-
+#include <LoRa.h>
 bool is_broadcast(uint8_t* mac){
   return (mac[0]==0xff&&
           mac[1]==0xff&&
@@ -15,7 +14,7 @@ bool is_broadcast(uint8_t* mac){
           );
 }
 
-bool i_m_gateway=false;
+bool i_m_gateway=true;
 
 // Funzione per convertire una stringa MAC in un array di byte
 void macStrToByteArray(const String &macStr, uint8_t *macArray) {
@@ -70,6 +69,7 @@ Scheduler ts;
 
 void readBLE();
 void sendBLE();
+
 Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
 //Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
 
@@ -79,6 +79,27 @@ JsonDocument MacAddress;
 #define TEMPERATURE_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define SATURATION_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 #define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
+
+bool send_data_to(uint8_t* dest){
+
+  if(!is_broadcast(dest)){
+    esp_err_t result = esp_now_send(dest, (uint8_t *) &message, sizeof(message));
+    if (result == ESP_OK) {
+    Serial.println("Sent with success");
+    Serial.println();
+    return true;
+    }
+    else {
+      Serial.println("Error sending the data");
+      Serial.println();
+      return false;
+    }
+  }
+  else{
+    Serial.println("sarebbe Broadcast beddu");
+    return false;
+  }
+}
 
 void sendBLE(){
   if(MacAddress.size()==0&&data_ready){
@@ -99,22 +120,13 @@ void sendBLE(){
   strcpy(message.dest,String("1:1:1:1:1:1").c_str());
   message.dest[String("1:1:1:1:1:1").length()]='\0';
   
-
-
-  if(!is_broadcast(remote_wifi_prec)){
-    esp_err_t result = esp_now_send(remote_wifi_prec, (uint8_t *) &message, sizeof(message));
-    if (result == ESP_OK) {
-    Serial.println("Sent with success");
-    Serial.println();
-    }
-    else {
-      Serial.println("Error sending the data");
-      Serial.println();
-    }
+  int retry=0;
+  while(!send_data_to(remote_wifi_prec)){
+    retry++;
+        if(retry==10)   
+          break;
   }
-  else{
-    Serial.println("sarebbe Broadcast beddu");
-  }
+
   data_ready=false;
   MacAddress.clear();
 }
@@ -260,29 +272,39 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     snprintf(remote_wifi_prec_str, sizeof(remote_wifi_prec_str), "%02x:%02x:%02x:%02x:%02x:%02x",
          remote_wifi_prec[0], remote_wifi_prec[1], remote_wifi_prec[2],
           remote_wifi_prec[3], remote_wifi_prec[4], remote_wifi_prec[5]);
-    String remote_wifi_prec_String(remote_wifi_prec_str);
+
 
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
          mac[0], mac[1], mac[2],
           mac[3], mac[4], mac[5]);
-    String mac_String(mac_str);if(mac_String.equals(remote_wifi_prec_str)){
+
+    String mac_String(mac_str);
+    
+    if(mac_String.equals(remote_wifi_prec_str)){
       Serial.println("inoltro a next");
-      if(!is_broadcast(remote_wifi_next)){
-        esp_err_t result = esp_now_send(remote_wifi_next, (uint8_t *) &incomingReadings, sizeof(incomingReadings));
-      }
-      else{
-        Serial.println("sarebbe broadcast beddu");
-      }
-    }else{
-      Serial.println("inoltro a prec");
-      if(!is_broadcast(remote_wifi_prec)){
-        esp_err_t result = esp_now_send(remote_wifi_prec, (uint8_t *) &incomingReadings, sizeof(incomingReadings));
-      }else{
-        Serial.println("sarebbe broadcast beddu");
+      int retry=0;
+      while(!send_data_to(remote_wifi_next)){
+        retry++;
+        if(retry==10)   
+          break;
       }
 
     }
+    else{
+      if(i_m_gateway){
+        Serial.println("invio lora");
+
+      }
+      Serial.println("inoltro a prec");
+      int retry=0;
+      while(!send_data_to(remote_wifi_prec)){
+        retry++;
+        if(retry==10)   
+          break;
+      }
+    }
+
   }
 
 }
@@ -391,20 +413,12 @@ void setup() {
     strcpy(message.dest,String(mac_str).c_str());
     message.dest[String(mac_str).length()]='\0';
 
-    if(!is_broadcast(remote_wifi_prec)){
-      esp_err_t result = esp_now_send(remote_wifi_prec, (uint8_t *) &message, sizeof(message));
-      if (result == ESP_OK) {
-      Serial.println("Sent with success");
-      Serial.println();
+    int retry=0;
+    while(!send_data_to(remote_wifi_prec)){ 
+      retry++;
+        if(retry==10)   
+          break;
       }
-      else {
-        Serial.println("Error sending the data");
-        Serial.println();
-      }
-    }
-    else{
-      Serial.println("sarebbe Broadcast beddu");
-    }
 
     
   }
@@ -432,8 +446,6 @@ void loop() {
     strcpy(message.source,WiFi.macAddress().c_str());
     strcpy(message.text,String("ciao").c_str());
     
-
-
     char mac_str[18];
     snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
           broadcastAddress[0], broadcastAddress[1], broadcastAddress[2],
@@ -443,21 +455,14 @@ void loop() {
 
     Serial.print("destinatario nuovo messagio:   ");
     Serial.println(message.dest);
-    if(!is_broadcast(remote_wifi_prec)){
-      esp_err_t result = esp_now_send(remote_wifi_prec, (uint8_t *) &message, sizeof(message));
-      if (result == ESP_OK) {
-      Serial.println("Sent with success");
-      Serial.println();
+    int retry=0;
+    while(!send_data_to(remote_wifi_prec)){ 
+      retry++;
+        if(retry==10)   
+          break;
       }
-      else {
-        Serial.println("Error sending the data");
-        Serial.println();
-      }
-    }
-    else{
-      Serial.println("sarebbe Broadcast beddu");
-    }
     
   }
+  
   ts.execute();
 }
