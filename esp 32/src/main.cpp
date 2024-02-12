@@ -4,6 +4,7 @@
 #include <TaskScheduler.h>
 #include <ArduinoJson.h>
 #include <LoRa.h>
+
 bool is_broadcast(uint8_t* mac){
   return (mac[0]==0xff&&
           mac[1]==0xff&&
@@ -14,7 +15,7 @@ bool is_broadcast(uint8_t* mac){
           );
 }
 
-bool i_m_gateway=true;
+bool i_m_gateway=false;
 
 // Funzione per convertire una stringa MAC in un array di byte
 void macStrToByteArray(const String &macStr, uint8_t *macArray) {
@@ -294,6 +295,8 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     else{
       if(i_m_gateway){
         Serial.println("invio lora");
+        //invia con lora 
+        BLE.
 
       }
       Serial.println("inoltro a prec");

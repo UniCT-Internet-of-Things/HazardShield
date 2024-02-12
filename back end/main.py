@@ -8,3 +8,15 @@ app = Flask(__name__,
             static_folder=frontend_folder+'_app',
             template_folder=frontend_folder,
             )
+
+
+@app.route('/get_data', methods=['POST'])
+def ricevi_dati():
+
+    print(request)
+    
+    return 'Dati ricevuti con successo!'
+
+
+if __name__ == '__main__':
+    app.run(debug=True,host="0.0.0.0")
