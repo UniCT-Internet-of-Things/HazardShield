@@ -5,6 +5,10 @@
 #include <ArduinoJson.h>
 #include <LoRa.h>
 
+#define ss 18
+#define rst 23
+#define dio0 26
+
 bool is_broadcast(uint8_t* mac){
   return (mac[0]==0xff&&
           mac[1]==0xff&&
@@ -15,7 +19,7 @@ bool is_broadcast(uint8_t* mac){
           );
 }
 
-bool i_m_gateway=false;
+bool i_m_gateway=true; 
 
 // Funzione per convertire una stringa MAC in un array di byte
 void macStrToByteArray(const String &macStr, uint8_t *macArray) {
@@ -295,7 +299,11 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     else{
       if(i_m_gateway){
         Serial.println("invio lora");
-        
+        LoRa.beginPacket();
+        String LoraMessage = String("{\"Sorgente\": \"") + String(incomingReadings.source) + String("\", \"messaggio\": \"") + String(incomingReadings.text) + String("\"}"); 
+        LoRa.print(LoraMessage);
+        LoRa.endPacket();
+
       }
       Serial.println("inoltro a prec");
       int retry=0;
@@ -313,6 +321,14 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 void setup() {
   // Init Serial Monitor
   Serial.begin(115200);
+
+  LoRa.setPins(ss, rst, dio0);
+  while (!LoRa.begin(866E6)) {
+      Serial.println(".");
+      delay(500); 
+  }
+
+  LoRa.setSyncWord(0xffff);
 
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
@@ -351,6 +367,8 @@ void setup() {
 
     Serial.println("searching");
     delay(500);
+    LoRa.setPins(ss, rst, dio0);
+    
   }
 
 
