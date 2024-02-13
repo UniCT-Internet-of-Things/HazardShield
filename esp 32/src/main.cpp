@@ -3,11 +3,7 @@
 #include <ArduinoBLE.h>
 #include <TaskScheduler.h>
 #include <ArduinoJson.h>
-#include <LoRa.h>
 
-#define ss 18
-#define rst 23
-#define dio0 26
 
 bool is_broadcast(uint8_t* mac){
   return (mac[0]==0xff&&
@@ -19,7 +15,7 @@ bool is_broadcast(uint8_t* mac){
           );
 }
 
-bool i_m_gateway=true; 
+
 
 // Funzione per convertire una stringa MAC in un array di byte
 void macStrToByteArray(const String &macStr, uint8_t *macArray) {
@@ -101,7 +97,7 @@ bool send_data_to(uint8_t* dest){
     }
   }
   else{
-    Serial.println("sarebbe Broadcast beddu");
+    //Serial.println("sarebbe Broadcast beddu");
     return false;
   }
 }
@@ -127,6 +123,13 @@ void sendBLE(){
   
   int retry=0;
   while(!send_data_to(remote_wifi_prec)){
+    retry++;
+        if(retry==10)   
+          break;
+  }
+
+  retry=0;
+  while(!send_data_to(remote_wifi_next)){
     retry++;
         if(retry==10)   
           break;
@@ -297,14 +300,6 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
 
     }
     else{
-      if(i_m_gateway){
-        Serial.println("invio lora");
-        LoRa.beginPacket();
-        String LoraMessage = String("{\"Sorgente\": \"") + String(incomingReadings.source) + String("\", \"messaggio\": \"") + String(incomingReadings.text) + String("\"}"); 
-        LoRa.print(LoraMessage);
-        LoRa.endPacket();
-
-      }
       Serial.println("inoltro a prec");
       int retry=0;
       while(!send_data_to(remote_wifi_prec)){
@@ -322,14 +317,6 @@ void setup() {
   // Init Serial Monitor
   Serial.begin(115200);
 
-  LoRa.setPins(ss, rst, dio0);
-  while (!LoRa.begin(866E6)) {
-      Serial.println(".");
-      delay(500); 
-  }
-
-  LoRa.setSyncWord(0xffff);
-
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
   Serial.println();
@@ -341,10 +328,9 @@ void setup() {
   BLE.setLocalName("Ancora");
 
   BLE.advertise();
-  if(!i_m_gateway)
-    BLE.scanForName("Ancora");
+  BLE.scanForName("Ancora");
   
-  while(!i_m_gateway){
+  while(true){
     BLEDevice peripheral = BLE.available();
     if(peripheral){
       Serial.println("Address: " + peripheral.address());
@@ -367,7 +353,6 @@ void setup() {
 
     Serial.println("searching");
     delay(500);
-    LoRa.setPins(ss, rst, dio0);
     
   }
 
@@ -396,23 +381,22 @@ void setup() {
     return;
   }
 
-  if(!i_m_gateway){
 
-    for(int i = 0; i < 6; i++){
-      Serial.print(remote_wifi_prec[i],HEX);
-      Serial.print(":");
-    }
-    Serial.println();
+  for(int i = 0; i < 6; i++){
+    Serial.print(remote_wifi_prec[i],HEX);
+    Serial.print(":");
+  }
+  Serial.println();
 
-    // Register peer wifi
-    memcpy(peerInfo.peer_addr, remote_wifi_prec, 6);
-    peerInfo.channel = 1;  
-    peerInfo.encrypt = false;
-    // Add peer
-    if(esp_now_add_peer(&peerInfo) != ESP_OK){
-      Serial.println("Failed to add peer");
-      return;
-    }
+  // Register peer wifi
+  memcpy(peerInfo.peer_addr, remote_wifi_prec, 6);
+  peerInfo.channel = 1;  
+  peerInfo.encrypt = false;
+  // Add peer
+  if(esp_now_add_peer(&peerInfo) != ESP_OK){
+    Serial.println("Failed to add peer");
+    return;
+  }
     
   strcpy(message.type,String("new node").c_str());
   message.dest[String("new node").length()]='\0';
@@ -424,64 +408,31 @@ void setup() {
   message.dest[String("").length()]='\0';
 
 
-    char mac_str[18];
-    snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
-          remote_wifi_prec[0], remote_wifi_prec[1], remote_wifi_prec[2],
-          remote_wifi_prec[3], remote_wifi_prec[4], remote_wifi_prec[5]);
+  char mac_str[18];
+  snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
+        remote_wifi_prec[0], remote_wifi_prec[1], remote_wifi_prec[2],
+        remote_wifi_prec[3], remote_wifi_prec[4], remote_wifi_prec[5]);
 
-    strcpy(message.dest,String(mac_str).c_str());
-    message.dest[String(mac_str).length()]='\0';
+  strcpy(message.dest,String(mac_str).c_str());
+  message.dest[String(mac_str).length()]='\0';
 
-    int retry=0;
-    while(!send_data_to(remote_wifi_prec)){ 
-      retry++;
-        if(retry==10)   
-          break;
-      }
-
-    
+  int retry=0;
+  while(!send_data_to(remote_wifi_prec)){ 
+    retry++;
+      if(retry==10)   
+        break;
   }
-  
   ReadBLE.disable();
   //SendBLE.disable();
+  ts.addTask(ReadBLE);
+  //ts.addTask(SendBLE);
+  ReadBLE.enable();
+  //SendBLE.enable();
 
-  if(!i_m_gateway){
-    ts.addTask(ReadBLE);
-    //ts.addTask(SendBLE);
-    ReadBLE.enable();
-    //SendBLE.enable();
-  }
-  
-  
   ts.startNow();
 }
 
 void loop() {
-
-  if(false){
-    delay(5000);
-    
-    strcpy(message.type,String("mess").c_str());
-    strcpy(message.source,WiFi.macAddress().c_str());
-    strcpy(message.text,String("ciao").c_str());
-    
-    char mac_str[18];
-    snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
-          broadcastAddress[0], broadcastAddress[1], broadcastAddress[2],
-          broadcastAddress[3], broadcastAddress[4], broadcastAddress[5]);
-
-    strcpy(message.dest,String(mac_str).c_str());
-
-    Serial.print("destinatario nuovo messagio:   ");
-    Serial.println(message.dest);
-    int retry=0;
-    while(!send_data_to(remote_wifi_prec)){ 
-      retry++;
-        if(retry==10)   
-          break;
-      }
-    
-  }
   
   ts.execute();
 }
