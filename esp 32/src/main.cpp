@@ -81,10 +81,10 @@ JsonDocument MacAddress;
 #define SATURATION_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 #define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
 
-bool send_data_to(uint8_t* dest){
+bool send_data_to(uint8_t* dest,uint8_t * da_spedire){
 
   if(!is_broadcast(dest)){
-    esp_err_t result = esp_now_send(dest, (uint8_t *) &message, sizeof(message));
+    esp_err_t result = esp_now_send(dest, (uint8_t *) &da_spedire, sizeof(message));
     if (result == ESP_OK) {
     Serial.println("Sent with success");
     Serial.println();
@@ -122,14 +122,14 @@ void sendBLE(){
   message.dest[String("1:1:1:1:1:1").length()]='\0';
   
   int retry=0;
-  while(!send_data_to(remote_wifi_prec)){
+  while(!send_data_to(remote_wifi_prec,(uint8_t *) &message)){
     retry++;
         if(retry==10)   
           break;
   }
 
   retry=0;
-  while(!send_data_to(remote_wifi_next)){
+  while(!send_data_to(remote_wifi_next,(uint8_t *) &message)){
     retry++;
         if(retry==10)   
           break;
@@ -249,10 +249,13 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.println(len);
   Serial.print("type:  ");
   Serial.println(incomingReadings.type);
+  Serial.print("source:  ");
+  Serial.println(incomingReadings.source);
   Serial.print("dest:  ");
   Serial.println(incomingReadings.dest);
   Serial.print("text:  ");
   Serial.println(incomingReadings.text);
+
 
   Serial.println("");
 
@@ -292,7 +295,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     if(mac_String.equals(remote_wifi_prec_str)){
       Serial.println("inoltro a next");
       int retry=0;
-      while(!send_data_to(remote_wifi_next)){
+      while(!send_data_to(remote_wifi_next,(uint8_t *) &incomingReadings)){
         retry++;
         if(retry==10)   
           break;
@@ -302,7 +305,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
     else{
       Serial.println("inoltro a prec");
       int retry=0;
-      while(!send_data_to(remote_wifi_prec)){
+      while(!send_data_to(remote_wifi_prec,(uint8_t *) &incomingReadings)){
         retry++;
         if(retry==10)   
           break;
@@ -417,7 +420,7 @@ void setup() {
   message.dest[String(mac_str).length()]='\0';
 
   int retry=0;
-  while(!send_data_to(remote_wifi_prec)){ 
+  while(!send_data_to(remote_wifi_prec,(uint8_t *) &message)){ 
     retry++;
       if(retry==10)   
         break;
