@@ -116,6 +116,9 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.print("text:  ");
   Serial.println(incomingReadings.text);
 
+  Serial.print("source:");
+  Serial.println(incomingReadings.source);
+
   Serial.println("");
 
   if(String(incomingReadings.type).equals("new node")){

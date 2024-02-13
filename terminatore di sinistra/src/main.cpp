@@ -1,13 +1,25 @@
 #include <esp_now.h>
 #include <WiFi.h>
-#include <ArduinoBLE.h>
+#include <Arduino.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+
 #include <TaskScheduler.h>
 #include <ArduinoJson.h>
 #include <LoRa.h>
 
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914c"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26b1"  
+
+
+
 #define ss 18
 #define rst 23
 #define dio0 26
+
+
+
 
 bool is_broadcast(uint8_t* mac){
   return (mac[0]==0xff&&
@@ -77,6 +89,32 @@ JsonDocument MacAddress;
 #define SATURATION_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 #define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
 
+
+BLECharacteristic *pTemperatureCharacteristic;
+
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *pServer) {
+    Serial.println("Device connected");
+  }
+
+  void onDisconnect(BLEServer *pServer) {
+    BLEDevice::startAdvertising();
+    Serial.println("Device disconnected");
+  }
+};
+
+
+class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+    std::string value = pCharacteristic->getValue();
+    Serial.print("Hai scritto: ");
+    Serial.println(value.c_str());
+
+  }
+    
+};
+
+
 bool send_data_to(uint8_t* dest){
 
   if(!is_broadcast(dest)){
@@ -113,6 +151,9 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
   Serial.println(incomingReadings.dest);
   Serial.print("text:  ");
   Serial.println(incomingReadings.text);
+  
+  Serial.print("source:  ");
+  Serial.println(incomingReadings.source);
 
   Serial.println("");
 
@@ -128,7 +169,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       Serial.println("Failed to add discovered peer");
       return;
     }
-    BLE.stopAdvertise();
+    BLEDevice::deinit(true);
   }
   else if(String(incomingReadings.dest).equals(WiFi.macAddress())){
     Serial.println("arrivato a destinazione");
@@ -155,18 +196,24 @@ void setup() {
 
   LoRa.setSyncWord(0xffff);
 
+  BLEDevice::init("Ancora");
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pTemperatureCharacteristic = pService->createCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  pTemperatureCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  pTemperatureCharacteristic->setValue("1");
+  pService->start();
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  BLEDevice::startAdvertising();
+
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
   Serial.println();
 
-  if (!BLE.begin()) {
-    Serial.println("starting Bluetooth® Low Energy module failed!");
-    while (1);
-  }
-  BLE.setLocalName("Ancora");
-
-  BLE.advertise();
-  
   // Init ESP-NOW
   if (esp_now_init() != ESP_OK) {
     Serial.println("Error initializing ESP-NOW");

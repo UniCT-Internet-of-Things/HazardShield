@@ -64,7 +64,7 @@ void loop(){
     } 
     
     HTTPClient http;
-    String url="http://192.168.60.129:5000/get_data";
+    String url="http://192.168.231.130:5000/get_data";
     http.begin(url); 
     http.addHeader("Content-Type", "Content-Type: application/json"); 
 

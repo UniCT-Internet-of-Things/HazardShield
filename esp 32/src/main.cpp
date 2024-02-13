@@ -341,7 +341,9 @@ void setup() {
 
       macStrToByteArray(peripheral.address(),remote_ble);
       macStrToByteArray(peripheral.address(),remote_wifi_prec);
+
       remote_wifi_prec[5]=remote_wifi_prec[5]-2;
+      
       for(int i = 0; i < 6; i++){
         Serial.print(remote_ble[i],HEX);
         Serial.print(":");
