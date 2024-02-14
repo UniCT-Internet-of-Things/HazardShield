@@ -97,7 +97,7 @@ bool send_data_to(uint8_t* dest,uint8_t * da_spedire){
     }
   }
   else{
-    //Serial.println("sarebbe Broadcast beddu");
+    Serial.println("sarebbe Broadcast beddu");
     return false;
   }
 }
@@ -342,7 +342,7 @@ void setup() {
         Serial.println("Connected");
       } else {
         Serial.println("Failed to connect!");
-        return;
+        break;
       }
       Serial.println("Discovering attributes ...");
       if (peripheral.discoverAttributes()) {
@@ -350,14 +350,14 @@ void setup() {
       } else {
         Serial.println("Attribute discovery failed!");
         peripheral.disconnect();
-        return;
+        break;
       }
       Serial.println(peripheral.serviceCount());
 
       macStrToByteArray(peripheral.address(),remote_ble);
       macStrToByteArray(peripheral.address(),remote_wifi_prec);
       
-      if(peripheral.serviceCount()==1) remote_wifi_prec[5]=remote_wifi_prec[5]-2;
+      if(peripheral.serviceCount()==3) remote_wifi_prec[5]=remote_wifi_prec[5]-2;
       else remote_wifi_prec[5]=remote_wifi_prec[5]-1;
       for(int i = 0; i < 6; i++){
         Serial.print(remote_ble[i],HEX);
