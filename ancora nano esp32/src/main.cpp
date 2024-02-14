@@ -1,9 +1,18 @@
 #include <esp_now.h>
 #include <WiFi.h>
-#include <ArduinoBLE.h>
 #include <TaskScheduler.h>
 #include <ArduinoJson.h>
 
+#include <Arduino.h>
+
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <BLEclient.h>
+#include <BLEScan.h>
+
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914c"
+#define SERVICE_UUID_bracelet "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 
 bool is_broadcast(uint8_t* mac){
   return (mac[0]==0xff&&
@@ -16,6 +25,24 @@ bool is_broadcast(uint8_t* mac){
 }
 
 
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *pServer) {
+    Serial.println("Device connected");
+  }
+
+  void onDisconnect(BLEServer *pServer) {
+    //BLEDevice::startAdvertising();
+    Serial.println("Device disconnected");
+  }
+};
+class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+
+  }
+
+};
+
+BLECharacteristic *pTemperatureCharacteristic;
 
 // Funzione per convertire una stringa MAC in un array di byte
 void macStrToByteArray(const String &macStr, uint8_t *macArray) {
@@ -140,94 +167,58 @@ void sendBLE(){
 }
 
 void readBLE(){
-  BLE.scanForName("Braccialetto");
+  
+  BLEScan* pBLEScan = BLEDevice::getScan();
+  BLEScanResults foundDevices = pBLEScan->start(5);
 
-  for(int i = 0; i < 50; i++){
-    
-    delay(50);
+  for(int i = 0; i < foundDevices.getCount(); i++){
+    BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
 
-    BLEDevice peripheral = BLE.available();
-    if(peripheral){
-      //se peripheral.address() è già presente in MacAddressArray non fare nulla
-      if(MacAddress.containsKey(peripheral.address())){
-        //Serial.println("again");
-        peripheral.disconnect();
+    if(peripheral.getName()=="Braccialetto"){
+
+      BLEClient*  pClient  = BLEDevice::createClient();
+      pClient->connect(peripheral.getAddress());
+      BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID_bracelet);
+      if(pRemoteService==nullptr){
+        Serial.println("service not found");
         continue;
       }
-      else{
-        Serial.println("Address: " + peripheral.address());
-        BLE.stopScan();
 
-        if (peripheral.connect()) {
-          Serial.println("Connected");
-        } else {
-          Serial.println("Failed to connect!");
-          BLE.scanForName("Braccialetto");
-          peripheral.disconnect();
-          continue;
-        }
-
-        // discover peripheral attributes
-        Serial.println("Discovering attributes ...");
-        if (peripheral.discoverAttributes()) {
-          Serial.println("Attributes discovered");
-        } else {
-          Serial.println("Attribute discovery failed!");
-          peripheral.disconnect();
-          BLE.scanForName("Braccialetto");
-          continue;
-        }
-        BLECharacteristic TempCharacteristic = peripheral.characteristic(TEMPERATURE_CHARACTERISTIC_UUID);
-        BLECharacteristic SaturationCharacteristic = peripheral.characteristic(SATURATION_CHARACTERISTIC_UUID);
-        BLECharacteristic HeartbeatCharacteristic = peripheral.characteristic(HEARTBEAT_CHARACTERISTIC_UUID);
-
-        TempCharacteristic.read();
-        SaturationCharacteristic.read();
-        HeartbeatCharacteristic.read();
-
-        int tempLength = TempCharacteristic.valueLength();
-        int satLength = SaturationCharacteristic.valueLength();
-        int heartLength = HeartbeatCharacteristic.valueLength();
-
-        uint8_t tempValue[tempLength];
-        uint8_t satValue[satLength];
-        uint8_t heartValue[heartLength];
-
-        if (tempLength > 0) {
-          TempCharacteristic.readValue(tempValue, tempLength);
-          tempValue[tempLength] = '\0';
-          Serial.print("Temperature: ");
-          Serial.println((char*)tempValue);
-        }
-
-        if (satLength > 0) {
-          SaturationCharacteristic.readValue(satValue, satLength);
-          satValue[satLength] = '\0';
-          Serial.print("Saturation: ");
-          Serial.println((char*)satValue);
-        }
-
-        if (heartLength > 0) {
-          HeartbeatCharacteristic.readValue(heartValue, heartLength);
-          heartValue[heartLength] = '\0';
-          Serial.print("Heartbeat: ");
-          Serial.println((char*)heartValue);
-        }
-
-        char buffer[100];
-        snprintf(buffer, sizeof(buffer), "{Temperature: %s, Saturation: %s, Heartbeat: %s}", 
-          (char*)tempValue, (char*)satValue, (char*)heartValue);
-        
-        MacAddress[peripheral.address()]=buffer;
-        BLE.scanForName("Braccialetto");
-        peripheral.disconnect();
+      BLERemoteCharacteristic* pRemoteCharacteristic=  pRemoteService->getCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID);
+      if(pRemoteCharacteristic==nullptr){
+        Serial.println("characteristic not found");
+        continue;
       }
-      
-      peripheral.disconnect();
-    }
 
-    BLE.scanForName("Braccialetto");
-    peripheral.disconnect();
+      String temperature=pRemoteCharacteristic->readValue().c_str();
+
+      pRemoteCharacteristic=  pRemoteService->getCharacteristic(SATURATION_CHARACTERISTIC_UUID);
+      if(pRemoteCharacteristic==nullptr){
+        Serial.println("characteristic not found");
+        continue;
+      }
+
+      String saturation=pRemoteCharacteristic->readValue().c_str();
+
+      pRemoteCharacteristic=  pRemoteService->getCharacteristic(HEARTBEAT_CHARACTERISTIC_UUID);
+      if(pRemoteCharacteristic==nullptr){
+        Serial.println("characteristic not found");
+        continue;
+      }
+
+      String heartbeat=pRemoteCharacteristic->readValue().c_str();
+
+      char buffer[100];
+      snprintf(buffer, sizeof(buffer), "{Temperature: %s, Saturation: %s, Heartbeat: %s}", 
+        temperature.c_str(), saturation.c_str(), heartbeat.c_str());
+        
+      MacAddress[String(peripheral.getAddress().toString().c_str())]=buffer;
+
+    }
+    else{     
+      continue;
+    }
+    Serial.println(peripheral.getName().c_str());
   }
   
   data_ready=true;
@@ -271,7 +262,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       Serial.println("Failed to add discovered peer");
       return;
     }
-    BLE.stopAdvertise();
+    BLEDevice::deinit(true);
   }else if(String(incomingReadings.dest).equals(WiFi.macAddress())){
     Serial.println("arrivato a destinazione");
     Serial.println(incomingReadings.text);
@@ -324,56 +315,68 @@ void setup() {
   WiFi.mode(WIFI_STA);
   Serial.println();
 
-  if (!BLE.begin()) {
-    Serial.println("starting Bluetooth® Low Energy module failed!");
-    while (1);
-  }
-  BLE.setLocalName("Ancora");
+  BLEDevice::init("Ancora");
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pTemperatureCharacteristic = pService->createCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ );
+  pTemperatureCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  String mac = WiFi.macAddress();
+  pTemperatureCharacteristic->setValue(mac.c_str());
+  pService->start();
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  BLEDevice::startAdvertising();
 
-  BLE.advertise();
-  BLE.scanForName("Ancora");
-  
   while(true){
-    BLEDevice peripheral = BLE.available();
-    if(peripheral){
-      Serial.println("Address: " + peripheral.address());
-      BLE.stopScan();
-      if (peripheral.connect()) {
-        Serial.println("Connected");
-      } else {
-        Serial.println("Failed to connect!");
-        break;
-      }
-      Serial.println("Discovering attributes ...");
-      if (peripheral.discoverAttributes()) {
-        Serial.println("Attributes discovered");
-      } else {
-        Serial.println("Attribute discovery failed!");
-        peripheral.disconnect();
-        break;
-      }
-      Serial.println(peripheral.serviceCount());
-
-      macStrToByteArray(peripheral.address(),remote_ble);
-      macStrToByteArray(peripheral.address(),remote_wifi_prec);
-      
-      if(peripheral.serviceCount()==3) remote_wifi_prec[5]=remote_wifi_prec[5]-2;
-      else remote_wifi_prec[5]=remote_wifi_prec[5]-1;
-      for(int i = 0; i < 6; i++){
-        Serial.print(remote_ble[i],HEX);
-        Serial.print(":");
-      }
-      Serial.println();
-      Serial.println("Wifi Address: ");
-      Serial.println(WiFi.macAddress());
-      peripheral.disconnect();
-      
-      BLE.stopScan();
-      break;
+    //scan ble for name Ancora
+    BLEScan* pBLEScan = BLEDevice::getScan();
+    BLEScanResults foundDevices = pBLEScan->start(5);
+    
+    int i=0;
+    BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
+    
+    while(peripheral.getName()!="Ancora"){
+      i++;
+      peripheral=foundDevices.getDevice(i);
     }
 
-    Serial.println("searching");
-    delay(500);
+    Serial.print("Address: "); 
+    Serial.println(peripheral.getAddress().toString().c_str());
+    
+    BLEClient*  pClient  = BLEDevice::createClient();
+    pClient->connect(peripheral.getAddress());
+    BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
+    if(pRemoteService==nullptr){
+      Serial.println("service not found");
+      continue;
+    }
+
+    BLERemoteCharacteristic* pRemoteCharacteristic=  pRemoteService->getCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID);
+    if(pRemoteCharacteristic==nullptr){
+      Serial.println("characteristic not found");
+      continue;
+    }
+    String remoteaddress=pRemoteCharacteristic->readValue().c_str();
+
+    macStrToByteArray(String(peripheral.getAddress().toString().c_str()),remote_ble);
+
+    macStrToByteArray(remoteaddress,remote_wifi_prec);
+    
+    for(int i = 0; i < 6; i++){
+      Serial.print(remote_ble[i],HEX);
+      Serial.print(":");
+    }
+
+    Serial.println();
+    Serial.println("Wifi Address: ");
+    Serial.println(WiFi.macAddress());
+
+    pClient->disconnect();
+    
+    break;
     
   }
 
