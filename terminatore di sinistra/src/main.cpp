@@ -1,9 +1,17 @@
 #include <esp_now.h>
 #include <WiFi.h>
-#include <ArduinoBLE.h>
+
+#include <Arduino.h>
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+
 #include <TaskScheduler.h>
 #include <ArduinoJson.h>
 #include <LoRa.h>
+
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914c"
+#define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26b1"  
 
 #define ss 18
 #define rst 23
@@ -20,6 +28,25 @@ bool is_broadcast(uint8_t* mac){
 }
 
 bool i_m_gateway=true; 
+
+BLECharacteristic *pTemperatureCharacteristic;
+
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer *pServer) {
+    Serial.println("Device connected");
+  }
+
+  void onDisconnect(BLEServer *pServer) {
+    //BLEDevice::startAdvertising();
+    Serial.println("Device disconnected");
+  }
+};
+class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic) {
+
+  }
+
+};
 
 // Funzione per convertire una stringa MAC in un array di byte
 void macStrToByteArray(const String &macStr, uint8_t *macArray) {
@@ -131,7 +158,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       Serial.println("Failed to add discovered peer");
       return;
     }
-    BLE.stopAdvertise();
+    BLEDevice::deinit(true);
   }
   else if(String(incomingReadings.dest).equals(WiFi.macAddress())){
     Serial.println("arrivato a destinazione");
@@ -162,13 +189,20 @@ void setup() {
   WiFi.mode(WIFI_STA);
   Serial.println();
 
-  if (!BLE.begin()) {
-    Serial.println("starting Bluetooth® Low Energy module failed!");
-    while (1);
-  }
-  BLE.setLocalName("Ancora");
-
-  BLE.advertise();
+  BLEDevice::init("Ancora");
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pTemperatureCharacteristic = pService->createCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ );
+  pTemperatureCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  String mac = WiFi.macAddress();
+  pTemperatureCharacteristic->setValue(mac.c_str());
+  pService->start();
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  BLEDevice::startAdvertising();
   
   // Init ESP-NOW
   if (esp_now_init() != ESP_OK) {
