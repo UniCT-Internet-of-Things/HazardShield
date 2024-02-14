@@ -315,22 +315,10 @@ void setup() {
   WiFi.mode(WIFI_STA);
   Serial.println();
 
-  BLEDevice::init("Ancora");
-  BLEServer *pServer = BLEDevice::createServer();
-  pServer->setCallbacks(new MyServerCallbacks());
-  BLEService *pService = pServer->createService(SERVICE_UUID);
-  pTemperatureCharacteristic = pService->createCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ );
-  pTemperatureCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
-  String mac = WiFi.macAddress();
-  pTemperatureCharacteristic->setValue(mac.c_str());
-  pService->start();
-  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-  pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(true);
-  pAdvertising->setMinPreferred(0x06);
-  BLEDevice::startAdvertising();
-
+  
+  delay(3000);
   while(true){
+    Serial.println("Scanning for Ancora");
     //scan ble for name Ancora
     BLEScan* pBLEScan = BLEDevice::getScan();
     BLEScanResults foundDevices = pBLEScan->start(5);
@@ -379,6 +367,21 @@ void setup() {
     break;
     
   }
+
+  BLEDevice::init("Ancora");
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pTemperatureCharacteristic = pService->createCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ );
+  pTemperatureCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  String mac = WiFi.macAddress();
+  pTemperatureCharacteristic->setValue(mac.c_str());
+  pService->start();
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  BLEDevice::startAdvertising();
 
 
   // Init ESP-NOW
