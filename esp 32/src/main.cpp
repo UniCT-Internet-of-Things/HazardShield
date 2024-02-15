@@ -26,7 +26,7 @@ bool is_broadcast(uint8_t* mac){
 
 BLEAdvertisedDevice myAncora;
 BLEScan *pBLEScan;
-class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
+class callbackAncore: public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
     //Serial.println("Advertised Device found: " + String(advertisedDevice.getName().c_str()));
     if (String(advertisedDevice.getName().c_str()) == "Ancora") {
@@ -35,6 +35,12 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       pBLEScan->stop();
     }
 } };
+
+class callbackgenerica: public BLEAdvertisedDeviceCallbacks {
+  void onResult(BLEAdvertisedDevice advertisedDevice) {
+    
+  }
+};
 
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer) {
@@ -232,7 +238,7 @@ void readBLE(){
     }
     Serial.println(peripheral.getName().c_str());
   }
-  
+  BLEDevice::startAdvertising();
   data_ready=true;
   serializeJsonPretty(MacAddress, Serial);
   sendBLE();
@@ -274,7 +280,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       Serial.println("Failed to add discovered peer");
       return;
     }
-    BLEDevice::deinit(true);
+    BLEDevice::stopAdvertising();
   }else if(String(incomingReadings.dest).equals(WiFi.macAddress())){
     Serial.println("arrivato a destinazione");
     Serial.println(incomingReadings.text);
@@ -334,7 +340,7 @@ void setup() {
     //scan ble for name Ancora
     pBLEScan = BLEDevice::getScan();
     pBLEScan->setActiveScan(true);
-    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
+    pBLEScan->setAdvertisedDeviceCallbacks(new callbackAncore());
     pBLEScan->start(5);
     Serial.println("Scan done");
     
@@ -374,7 +380,8 @@ void setup() {
     break;
     
   }
-
+  
+  pBLEScan->setAdvertisedDeviceCallbacks(new callbackgenerica());
   BLEDevice::init("Ancora");
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());

@@ -24,6 +24,23 @@ bool is_broadcast(uint8_t* mac){
           );
 }
 
+BLEAdvertisedDevice myAncora;
+BLEScan *pBLEScan;
+class callbackAncore: public BLEAdvertisedDeviceCallbacks {
+  void onResult(BLEAdvertisedDevice advertisedDevice) {
+    //Serial.println("Advertised Device found: " + String(advertisedDevice.getName().c_str()));
+    if (String(advertisedDevice.getName().c_str()) == "Ancora") {
+      Serial.println("Found our Ancora! " + String(advertisedDevice.getAddress().toString().c_str()));
+      myAncora = advertisedDevice;
+      pBLEScan->stop();
+    }
+} };
+
+class callbackgenerica: public BLEAdvertisedDeviceCallbacks {
+  void onResult(BLEAdvertisedDevice advertisedDevice) {
+    
+  }
+};
 
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer) {
@@ -98,7 +115,7 @@ Scheduler ts;
 void readBLE();
 void sendBLE();
 
-Task ReadBLE(30000,TASK_FOREVER,&readBLE,&ts,true);
+Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
 //Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
 
 bool data_ready=false;
@@ -167,9 +184,9 @@ void sendBLE(){
 }
 
 void readBLE(){
-  
-  BLEScan* pBLEScan = BLEDevice::getScan();
-  BLEScanResults foundDevices = pBLEScan->start(5);
+  Serial.println("Reading BLE");
+  BLEScan* pBLEScanBraccialetto = BLEDevice::getScan();
+  BLEScanResults foundDevices = pBLEScanBraccialetto->start(5);
 
   for(int i = 0; i < foundDevices.getCount(); i++){
     BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
@@ -213,6 +230,7 @@ void readBLE(){
         temperature.c_str(), saturation.c_str(), heartbeat.c_str());
         
       MacAddress[String(peripheral.getAddress().toString().c_str())]=buffer;
+      pClient->disconnect();
 
     }
     else{     
@@ -220,7 +238,7 @@ void readBLE(){
     }
     Serial.println(peripheral.getName().c_str());
   }
-  
+  BLEDevice::startAdvertising();
   data_ready=true;
   serializeJsonPretty(MacAddress, Serial);
   sendBLE();
@@ -262,7 +280,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       Serial.println("Failed to add discovered peer");
       return;
     }
-    BLEDevice::deinit(true);
+    BLEDevice::stopAdvertising();
   }else if(String(incomingReadings.dest).equals(WiFi.macAddress())){
     Serial.println("arrivato a destinazione");
     Serial.println(incomingReadings.text);
@@ -315,27 +333,22 @@ void setup() {
   WiFi.mode(WIFI_STA);
   Serial.println();
 
-  
+  BLEDevice::init("Ancora");
   delay(3000);
   while(true){
     Serial.println("Scanning for Ancora");
     //scan ble for name Ancora
-    BLEScan* pBLEScan = BLEDevice::getScan();
-    BLEScanResults foundDevices = pBLEScan->start(5);
+    pBLEScan = BLEDevice::getScan();
+    pBLEScan->setActiveScan(true);
+    pBLEScan->setAdvertisedDeviceCallbacks(new callbackAncore());
+    pBLEScan->start(5);
+    Serial.println("Scan done");
     
-    int i=0;
-    BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
-    
-    while(peripheral.getName()!="Ancora"){
-      i++;
-      peripheral=foundDevices.getDevice(i);
-    }
-
     Serial.print("Address: "); 
-    Serial.println(peripheral.getAddress().toString().c_str());
+    Serial.println(myAncora.getAddress().toString().c_str());
     
     BLEClient*  pClient  = BLEDevice::createClient();
-    pClient->connect(peripheral.getAddress());
+    pClient->connect(myAncora.getAddress());
     BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
     if(pRemoteService==nullptr){
       Serial.println("service not found");
@@ -349,7 +362,7 @@ void setup() {
     }
     String remoteaddress=pRemoteCharacteristic->readValue().c_str();
 
-    macStrToByteArray(String(peripheral.getAddress().toString().c_str()),remote_ble);
+    macStrToByteArray(String(myAncora.getAddress().toString().c_str()),remote_ble);
 
     macStrToByteArray(remoteaddress,remote_wifi_prec);
     
@@ -367,7 +380,8 @@ void setup() {
     break;
     
   }
-
+  
+  pBLEScan->setAdvertisedDeviceCallbacks(new callbackgenerica());
   BLEDevice::init("Ancora");
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());

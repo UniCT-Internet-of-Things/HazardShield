@@ -158,7 +158,7 @@ void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
       Serial.println("Failed to add discovered peer");
       return;
     }
-    BLEDevice::deinit(true);
+    BLEDevice::stopAdvertising();
   }
   else if(String(incomingReadings.dest).equals(WiFi.macAddress())){
     Serial.println("arrivato a destinazione");
