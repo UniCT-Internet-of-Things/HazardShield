@@ -17,6 +17,7 @@
 #define rst 23
 #define dio0 26
 
+
 bool is_broadcast(uint8_t* mac){
   return (mac[0]==0xff&&
           mac[1]==0xff&&
@@ -29,7 +30,7 @@ bool is_broadcast(uint8_t* mac){
 
 bool i_m_gateway=true; 
 
-BLECharacteristic *pTemperatureCharacteristic;
+BLECharacteristic *caratteristica_mac;
 
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer) {
@@ -127,6 +128,16 @@ bool send_data_to(uint8_t* dest){
 
 
 void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+
+  if(status != ESP_NOW_SEND_SUCCESS){
+    Serial.println("Error sending the data");
+
+    Serial.println("Errore invio a prec");
+    esp_now_del_peer(remote_wifi_next);
+    BLEDevice::startAdvertising();
+
+  }
+
 }
 
 // Callback when data is received
@@ -193,10 +204,16 @@ void setup() {
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
   BLEService *pService = pServer->createService(SERVICE_UUID);
-  pTemperatureCharacteristic = pService->createCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ );
-  pTemperatureCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  caratteristica_mac = pService->createCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ );
+  caratteristica_mac->setCallbacks(new MyCharacteristicCallbacks());
   String mac = WiFi.macAddress();
-  pTemperatureCharacteristic->setValue(mac.c_str());
+  caratteristica_mac->setValue(mac.c_str());
+  //aggiungi descriptor
+  
+  BLEDescriptor *Descrittore_mac = new BLEDescriptor(BLEUUID((uint16_t)0x2901));
+  Descrittore_mac->setValue("mac address");
+  caratteristica_mac->addDescriptor(Descrittore_mac);
+  
   pService->start();
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
