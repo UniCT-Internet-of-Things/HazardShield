@@ -3,6 +3,8 @@
 #include <LoRa.h>
 #include <TaskScheduler.h>
 #include <ArduinoJson.h>
+#include <Preferences.h>
+#include <function/functions.cpp>
 
 #define ss 18
 #define rst 23
@@ -16,24 +18,12 @@
 
 #define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914c"
 #define ID_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a7"
+
 #define SERVICE_UUID_bracelet "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define TEMPERATURE_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define SATURATION_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 #define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
 
-BLEClient*  pClient;
-BLEAdvertisedDevice myAncora;
-BLEScan *pBLEScan;
-
-class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
-  void onResult(BLEAdvertisedDevice advertisedDevice) {
-    //Serial.println("Advertised Device found: " + String(advertisedDevice.getName().c_str()));
-    if (String(advertisedDevice.getName().c_str()) == "Ancora") {
-      Serial.println("Found our Ancora! " + String(advertisedDevice.getAddress().toString().c_str()));
-      myAncora = advertisedDevice;
-      pBLEScan->stop();
-    }
-} };
 
 class MyServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer *pServer) {
@@ -73,11 +63,11 @@ void macStrToByteArray(const String &macStr, uint8_t *macArray) {
     }
 }
 
-uint8_t remote_wifi_next[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t remote_wifi_prec[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t remote_mac_next[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+uint8_t remote_mac_prec[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
-String remote_wifi_next_str = "FF:FF:FF:FF:FF:FF";
-String remote_wifi_prec_str = "FF:FF:FF:FF:FF:FF";
+String remote_mac_next_str = "FF:FF:FF:FF:FF:FF";
+String remote_mac_prec_str = "FF:FF:FF:FF:FF:FF";
 
 typedef struct struct_message {
     char type[20];
@@ -104,12 +94,13 @@ void sendBLE(){
 void readBLE(){
   Serial.println("Reading BLE");
   BLEScan* pBLEScanBraccialetto = BLEDevice::getScan();
+  pBLEScanBraccialetto->setAdvertisedDeviceCallbacks(new callbackgenerica());
   BLEScanResults foundDevices = pBLEScanBraccialetto->start(5);
 
   for(int i = 0; i < foundDevices.getCount(); i++){
     BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
 
-    if(peripheral.getName()=="Braccialetto"){
+    if(peripheral.haveName()&&peripheral.getName()=="Braccialetto"){
       pClient->connect(peripheral.getAddress());
       BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID_bracelet);
       if(pRemoteService==nullptr){
@@ -161,8 +152,6 @@ void readBLE(){
 }
 
 
-
-
 void onReceive(int packetSize) {
   if (packetSize == 0) return;          // if there's no packet, return
 
@@ -183,9 +172,9 @@ void onReceive(int packetSize) {
 
 BLECharacteristic *pAncoraCharacteristic;
 
+
 void SetIDAncora(){
-  BLEDevice::init("Ancora");
-  pClient = BLEDevice::createClient();
+  
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
   BLEService *pService = pServer->createService(SERVICE_UUID);
@@ -199,66 +188,36 @@ void SetIDAncora(){
   pAdvertising->setMinPreferred(0x06);
   BLEDevice::startAdvertising();
 }
+Preferences pref;
 
 void setup(){
+
+  pref.begin("my_id", false); 
   Serial.begin(115200);
-
-  while(true){
-    Serial.println("Scanning for Ancora");
-    //scan ble for name Ancora
-    pBLEScan = BLEDevice::getScan();
-    pBLEScan->setActiveScan(true);
-    pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks());
-    pBLEScan->start(5);
-    Serial.println("Scan done");
-    
-    Serial.print("Address: "); 
-    Serial.println(myAncora.getAddress().toString().c_str());
-    
-    BLEClient*  pClient  = BLEDevice::createClient();
-    pClient->connect(myAncora.getAddress());
-    BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
-    if(pRemoteService==nullptr){
-      Serial.println("service not found");
-      continue;
-    }
-
-    BLERemoteCharacteristic* pRemoteCharacteristic=  pRemoteService->getCharacteristic(TEMPERATURE_CHARACTERISTIC_UUID);
-    if(pRemoteCharacteristic==nullptr){
-      Serial.println("characteristic not found");
-      continue;
-    }
-    String remoteaddress=pRemoteCharacteristic->readValue().c_str();
-
-    macStrToByteArray(String(myAncora.getAddress().toString().c_str()),remote_ble);
-
-    macStrToByteArray(remoteaddress,remote_wifi_prec);
-    
-    for(int i = 0; i < 6; i++){
-      Serial.print(remote_ble[i],HEX);
-      Serial.print(":");
-    }
-
-    Serial.println();
-    Serial.println("Wifi Address: ");
-    Serial.println(WiFi.macAddress());
-
-    pClient->disconnect();
-    
-    break;
-    
-  }
-
-  SetIDAncora();
   LoRa.setPins(ss, rst, dio0);
   while (!LoRa.begin(866E6)) {
     Serial.println(".");
     delay(500); 
   }
-  
-
   LoRa.setSyncWord(0xffff);
   LoRa.onReceive(onReceive);
+  BLEDevice::init("Ancora");
+  pClient = BLEDevice::createClient();
+
+
+  int id=pref.getInt("id");
+
+  if(id==0){
+    String ID=scan_ancore_blocked();
+    pref.putInt("id",ID.toInt()+1);
+  }
+  else{
+    //non è la prima volta che si accende
+  }
+
+  Serial.println("ID: "+String(id));
+  
+  
   LoRa.receive();
   Serial.println("LoRa Initializing OK!");
 }
