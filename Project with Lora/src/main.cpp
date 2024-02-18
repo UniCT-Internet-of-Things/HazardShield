@@ -24,44 +24,66 @@
 #define SATURATION_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
 #define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
 
+int id=0;
+bool ho_settato_un_altro_esp=false;
 
-class MyServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer *pServer) {
-    Serial.println("Device connected");
+int msgCount = 0;            // count of outgoing messages
+
+Preferences pref;
+
+void readBLE();
+void searchAncore();
+void sendBLE();
+
+Scheduler ts;
+
+Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
+Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
+
+//Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
+
+void OnReceive(int packetSize) {
+  if (packetSize == 0) return;          // if there's no packet, return
+
+  String incoming = "";                 // payload of packet
+
+  while (LoRa.available()) {            // can't use readString() in callback, so
+    incoming += (char)LoRa.read();      // add bytes one by one
   }
 
-  void onDisconnect(BLEServer *pServer) {
-    //BLEDevice::startAdvertising();
-    Serial.println("Device disconnected");
-  }
-};
+  Serial.println("Message: " + incoming);
+  // LoRa.beginPacket();
+  // String messagge = nominativo + value.c_str();
+  // LoRa.print(messagge);
+  // LoRa.endPacket();
+  // LoRa.receive();
+  
+}
 
-class MyCharacteristicCallbacks : public BLECharacteristicCallbacks {
+class callbackSetId : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic *pCharacteristic) {
+    String value = pCharacteristic->getValue().c_str();
+    if (value.toInt() != 0) {
+      Serial.println("New value: " + value);
+      id=value.toInt();
+      pref.putInt("id",id);
+      BLEDevice::stopAdvertising();
+      
+      ReadBLE.disable();
+      searchAncore_task.enable();
+      LoRa.receive();
+  
+    }
   }
 };
+
+extern BLEClient*  pClient;
+extern BLEAdvertisedDevice myAncora;
+extern bool AncoraFound;
+extern BLEScan *pBLEScan;
 
 
 BLECharacteristic *pTemperatureCharacteristic;
-
-// Funzione per convertire una stringa MAC in un array di byte
-void macStrToByteArray(const String &macStr, uint8_t *macArray) {
-    // Controllo se la lunghezza della stringa MAC è corretta
-    if (macStr.length() != 17) {
-        Serial.println("Formato MAC non valido");
-        return;
-    }
-
-    char hexNum[3]; // Buffer temporaneo per memorizzare coppie di cifre esadecimali
-    for (int i = 0; i < 6; ++i) {
-        hexNum[0] = macStr.charAt(i * 3);
-        hexNum[1] = macStr.charAt(i * 3 + 1);
-        hexNum[2] = '\0'; // Terminatore di stringa per assicurare una corretta conversione
-
-        // Converti la coppia di cifre esadecimali in un byte e memorizzalo nell'array
-        macArray[i] = strtoul(hexNum, NULL, 16);
-    }
-}
 
 uint8_t remote_mac_next[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 uint8_t remote_mac_prec[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -76,31 +98,45 @@ typedef struct struct_message {
     char dest[30]; 
 } struct_message;
 
-Scheduler ts;
-
-void readBLE();
-void sendBLE();
-
-Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
-//Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
-
+struct_message message;
 JsonDocument MacAddress;
-bool data_ready=false;
 
 void sendBLE(){
 
+      String BLEmessage;
+      serializeJson(MacAddress, BLEmessage);
+      
+      LoRa.beginPacket();
+
+      LoRa.print(id);   //original sender id
+      LoRa.print(0);    //final recipient 
+
+      LoRa.print((char*)&message);
+
+
+
+      LoRa.endPacket();
+      LoRa.receive();
+  
 }
+
 
 void readBLE(){
   Serial.println("Reading BLE");
-  BLEScan* pBLEScanBraccialetto = BLEDevice::getScan();
-  pBLEScanBraccialetto->setAdvertisedDeviceCallbacks(new callbackgenerica());
-  BLEScanResults foundDevices = pBLEScanBraccialetto->start(5);
+  
+  pBLEScan = BLEDevice::getScan();
+  pBLEScan->setActiveScan(true);
+  pBLEScan->setAdvertisedDeviceCallbacks(new callbackgenerica());
+  pBLEScan->start(5);
+  BLEScanResults foundDevices = pBLEScan->getResults();
 
   for(int i = 0; i < foundDevices.getCount(); i++){
     BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
+    
+    Serial.println(peripheral.getAddress().toString().c_str());
+    Serial.println(String(peripheral.getName().c_str()));
 
-    if(peripheral.haveName()&&peripheral.getName()=="Braccialetto"){
+    if(peripheral.haveName()&&String(peripheral.getName().c_str()) =="Braccialetto"){
       pClient->connect(peripheral.getAddress());
       BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID_bracelet);
       if(pRemoteService==nullptr){
@@ -133,7 +169,7 @@ void readBLE(){
       String heartbeat=pRemoteCharacteristic->readValue().c_str();
 
       char buffer[100];
-      snprintf(buffer, sizeof(buffer), "{Temperature: %s, Saturation: %s, Heartbeat: %s}", 
+      snprintf(buffer, sizeof(buffer), "{%s,%s,%s}", 
         temperature.c_str(), saturation.c_str(), heartbeat.c_str());
         
       MacAddress[String(peripheral.getAddress().toString().c_str())]=buffer;
@@ -146,49 +182,73 @@ void readBLE(){
     Serial.println(peripheral.getName().c_str());
   }
   
-  data_ready=true;
   serializeJsonPretty(MacAddress, Serial);
   sendBLE();
 }
 
-
-void onReceive(int packetSize) {
-  if (packetSize == 0) return;          // if there's no packet, return
-
-  String incoming = "";                 // payload of packet
-
-  while (LoRa.available()) {            // can't use readString() in callback, so
-    incoming += (char)LoRa.read();      // add bytes one by one
-  }
-
-  Serial.println("Message: " + incoming);
-  // LoRa.beginPacket();
-  // String messagge = nominativo + value.c_str();
-  // LoRa.print(messagge);
-  // LoRa.endPacket();
-  // LoRa.receive();
+void searchAncore(){
+  Serial.println("Reading BLEfor ancore");
   
+  pBLEScan = BLEDevice::getScan();
+  pBLEScan->setActiveScan(true);
+  pBLEScan->setAdvertisedDeviceCallbacks(new callbackgenerica());
+  pBLEScan->start(5);
+  BLEScanResults foundDevices = pBLEScan->getResults();
+
+  for(int i = 0; i < foundDevices.getCount(); i++){
+    BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
+    
+    Serial.println(peripheral.getAddress().toString().c_str());
+    Serial.println(String(peripheral.getName().c_str()));
+
+    if(peripheral.haveName()&&String(peripheral.getName().c_str()) =="Ancora"){
+
+      pClient->connect(peripheral.getAddress());
+      BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
+      if(pRemoteService==nullptr){
+        Serial.println("service not found");
+        continue;
+      }
+
+      BLERemoteCharacteristic* pRemoteCharacteristic=  pRemoteService->getCharacteristic(ID_CHARACTERISTIC_UUID);
+      if(pRemoteCharacteristic==nullptr){
+        Serial.println("characteristic not found");
+        continue;
+      }
+      pRemoteCharacteristic->writeValue(String(id+1).c_str());
+    
+      pClient->disconnect();
+      searchAncore_task.disable();
+      pref.putBool("set_esp",true);
+      ReadBLE.enable();
+      break;
+
+    }
+  }
 }
 
 BLECharacteristic *pAncoraCharacteristic;
-
-
-void SetIDAncora(){
+void StartAdvertisingToSetID(){
   
   BLEServer *pServer = BLEDevice::createServer();
   pServer->setCallbacks(new MyServerCallbacks());
   BLEService *pService = pServer->createService(SERVICE_UUID);
-  pAncoraCharacteristic = pService->createCharacteristic(ID_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ );
-  pAncoraCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  pAncoraCharacteristic = pService->createCharacteristic(ID_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  pAncoraCharacteristic->setCallbacks(new callbackSetId());
   pAncoraCharacteristic->setValue("");
+
+  BLEDescriptor *pDescriptor = new BLEDescriptor((uint16_t)0x2901);
+  pDescriptor->setValue("ID");
+  pAncoraCharacteristic->addDescriptor(pDescriptor);
+
   pService->start();
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
   pAdvertising->setScanResponse(true);
   pAdvertising->setMinPreferred(0x06);
   BLEDevice::startAdvertising();
+
 }
-Preferences pref;
 
 void setup(){
 
@@ -200,29 +260,44 @@ void setup(){
     delay(500); 
   }
   LoRa.setSyncWord(0xffff);
-  LoRa.onReceive(onReceive);
+  Serial.println("LoRa Initializing OK!");
+
   BLEDevice::init("Ancora");
   pClient = BLEDevice::createClient();
+  LoRa.onReceive(OnReceive);
 
+  ho_settato_un_altro_esp=pref.getBool("set_esp");
 
-  int id=pref.getInt("id");
+  id=pref.getInt("id");
+  Serial.println("ID: "+String(id));
 
   if(id==0){
-    String ID=scan_ancore_blocked();
-    pref.putInt("id",ID.toInt()+1);
+    Serial.println("First time");
+    
+    ts.disableAll();
+    StartAdvertisingToSetID();
+    //String ID=scan_ancore_blocked();
+    //pref.putInt("id",ID.toInt()+1);
   }
   else{
-    //non è la prima volta che si accende
+    Serial.println("Second time");
+    if(ho_settato_un_altro_esp){
+      Serial.println("ho gia settato un altro esp");
+      ReadBLE.enable();
+      searchAncore_task.disable();
+    }else{
+      Serial.println("non ho ancora settato un altro esp");
+      ReadBLE.disable();
+      searchAncore_task.enable();
+      
+    }
+    
   }
 
   Serial.println("ID: "+String(id));
-  
-  
-  LoRa.receive();
-  Serial.println("LoRa Initializing OK!");
 }
 
 void loop() {
   
-  delay(1000);
+  ts.execute();
 }
