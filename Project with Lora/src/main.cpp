@@ -35,11 +35,15 @@ Preferences pref;
 void readBLE();
 void searchAncore();
 void sendBLE();
-
+void handle_queaue();
 Scheduler ts;
 
 Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
 Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
+Task handle_message_queaue(10000,TASK_FOREVER,&handle_queaue,&ts,false);
+
+void handle_queaue(){
+}
 
 typedef struct struct_message {
     char type[20];
@@ -47,6 +51,7 @@ typedef struct struct_message {
     char source[30];
     char dest[30]; 
     char messageCount[30];
+    int touched;
 } struct_message;
 
 struct_message message;
@@ -66,6 +71,26 @@ void OnReceive(int packetSize) {
   }
 
   memcpy(&message, incoming, sizeof(message));
+  
+  Serial.println("Message received: ");
+
+  Serial.print("source:   ");
+  Serial.println(message.source);
+
+  Serial.print("text:   ");
+  Serial.println(message.text);
+
+  Serial.print("type:   ");
+  Serial.println(message.type);
+
+  Serial.print("dest:   ");
+  Serial.println(message.dest);
+
+  Serial.print("messageCount:   ");
+  Serial.println(message.messageCount);
+  
+  Serial.print("touched:   ");
+  Serial.println(message.touched);
   
   
   
@@ -111,14 +136,16 @@ String remote_mac_prec_str = "FF:FF:FF:FF:FF:FF";
 
 
 void sendBLE(){
+  Serial.println("Sending BLE");
   String BLEmessage;
   serializeJson(MacAddress, BLEmessage);
   messages.push_back(new struct_message);
-  memcpy(messages.back()->text, BLEmessage.c_str(),  100);
-  memcpy(messages.back()->type, "BraceletData", 20);
-  memcpy(messages.back()->source, String(id).c_str(), 30);
-  memcpy(messages.back()->dest, "0", 30);
-  memcpy(messages.back()->messageCount, String(msgCount).c_str(), 30);
+  memcpy(messages.back()->text, BLEmessage.c_str(),BLEmessage.length());
+  memcpy(messages.back()->type, "BraceletData", String("BraceletData").length());
+  memcpy(messages.back()->source, String(id).c_str(), String(id).length());
+  memcpy(messages.back()->dest, "0", String("0").length());
+  memcpy(messages.back()->messageCount, String(msgCount).c_str(), String(msgCount).length());
+  messages.back()->touched=0;
   msgCount++;
   pref.putInt("msgCount",msgCount);
   LoRa.beginPacket();
@@ -140,8 +167,9 @@ void readBLE(){
   for(int i = 0; i < foundDevices.getCount(); i++){
     BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
     
-    Serial.println(peripheral.getAddress().toString().c_str());
-    Serial.println(String(peripheral.getName().c_str()));
+    //Serial.println(peripheral.getAddress().toString().c_str());
+    if(peripheral.haveName())
+      Serial.println(String(peripheral.getName().c_str()));
 
     if(peripheral.haveName()&&String(peripheral.getName().c_str()) =="Braccialetto"){
       pClient->connect(peripheral.getAddress());
@@ -205,8 +233,9 @@ void searchAncore(){
   for(int i = 0; i < foundDevices.getCount(); i++){
     BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
     
-    Serial.println(peripheral.getAddress().toString().c_str());
-    Serial.println(String(peripheral.getName().c_str()));
+    //Serial.println(peripheral.getAddress().toString().c_str());
+    if(peripheral.haveName())
+      Serial.println(String(peripheral.getName().c_str()));
 
     if(peripheral.haveName()&&String(peripheral.getName().c_str()) =="Ancora"){
 
@@ -272,7 +301,7 @@ void setup(){
   BLEDevice::init("Ancora");
   pClient = BLEDevice::createClient();
   LoRa.onReceive(OnReceive);
-
+  pref.putBool("set_esp",true);
   ho_settato_un_altro_esp=pref.getBool("set_esp");
   msgCount=pref.getInt("msgCount");
 
@@ -293,6 +322,7 @@ void setup(){
       Serial.println("ho gia settato un altro esp");
       ReadBLE.enable();
       searchAncore_task.disable();
+      LoRa.receive();
     }else{
       Serial.println("non ho ancora settato un altro esp");
       ReadBLE.disable();
