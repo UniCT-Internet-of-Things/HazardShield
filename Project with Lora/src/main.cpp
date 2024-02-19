@@ -61,6 +61,7 @@ std::list<struct_message*> messages;
 //Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
 
 void OnReceive(int packetSize) {
+  Serial.println("OnReceive");
   if (packetSize == 0) return;          // if there's no packet, return
 
   char incoming[250];
