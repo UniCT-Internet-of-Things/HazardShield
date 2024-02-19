@@ -67,7 +67,7 @@ void OnReceive(int packetSize) {
 
   memcpy(&message, incoming, sizeof(message));
   
-
+  
   
   // LoRa.beginPacket();
   // String messagge = nominativo + value.c_str();
