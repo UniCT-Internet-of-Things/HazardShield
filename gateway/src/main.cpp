@@ -21,6 +21,7 @@ bool SendToServer = false;
 String toSend = "";
 
 void onReceive(int packetSize) {
+  Serial.println("Received a packet");
   if (packetSize == 0) return;          // if there's no packet, return
   SendToServer = true;   
 }

@@ -31,6 +31,7 @@ bool ho_settato_un_altro_esp=false;
 int msgCount = 0;            // count of outgoing messages
 
 Preferences pref;
+bool data_ready=false;
 
 void readBLE();
 void searchAncore();
@@ -45,61 +46,27 @@ Task handle_message_queaue(10000,TASK_FOREVER,&handle_queaue,&ts,false);
 void handle_queaue(){
 }
 
+
 typedef struct struct_message {
     char type[20];
     char text[100]; 
-    char source[30];
-    char dest[30]; 
-    char messageCount[30];
-    int touched;
+    char source[8];
+    char dest[8]; 
+    char messageCount[12];
+    char touched[4];
 } struct_message;
+
 
 struct_message message;
 JsonDocument MacAddress;
 std::list<struct_message*> messages;
+struct_message *msg = new struct_message;
+bool data_avaible=false; 
 
 //Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
 
 void OnReceive(int packetSize) {
-  if (packetSize == 0) return;          // if there's no packet, return
-
-  char incoming[250];
-  int i=0;                 
-
-  while (LoRa.available()) {            // can't use readString() in callback, so
-    incoming[i] = (char)LoRa.read();      // add bytes one by one
-  }
-
-  memcpy(&message, incoming, sizeof(message));
-  
-  Serial.println("Message received: ");
-
-  Serial.print("source:   ");
-  Serial.println(message.source);
-
-  Serial.print("text:   ");
-  Serial.println(message.text);
-
-  Serial.print("type:   ");
-  Serial.println(message.type);
-
-  Serial.print("dest:   ");
-  Serial.println(message.dest);
-
-  Serial.print("messageCount:   ");
-  Serial.println(message.messageCount);
-  
-  Serial.print("touched:   ");
-  Serial.println(message.touched);
-  
-  
-  
-  // LoRa.beginPacket();
-  // String messagge = nominativo + value.c_str();
-  // LoRa.print(messagge);
-  // LoRa.endPacket();
-  // LoRa.receive();
-  
+  data_avaible=true;
 }
 
 class callbackSetId : public BLECharacteristicCallbacks {
@@ -113,7 +80,7 @@ class callbackSetId : public BLECharacteristicCallbacks {
       
       ReadBLE.disable();
       searchAncore_task.enable();
-      LoRa.receive();
+      //LoRa.receive();
   
     }
   }
@@ -136,28 +103,51 @@ String remote_mac_prec_str = "FF:FF:FF:FF:FF:FF";
 
 
 void sendBLE(){
+  if(!data_ready){
+    Serial.println("No data to send");
+    return;
+  }
   Serial.println("Sending BLE");
   String BLEmessage;
   serializeJson(MacAddress, BLEmessage);
-  messages.push_back(new struct_message);
-  memcpy(messages.back()->text, BLEmessage.c_str(),BLEmessage.length());
-  memcpy(messages.back()->type, "BraceletData", String("BraceletData").length());
-  memcpy(messages.back()->source, String(id).c_str(), String(id).length());
-  memcpy(messages.back()->dest, "0", String("0").length());
-  memcpy(messages.back()->messageCount, String(msgCount).c_str(), String(msgCount).length());
-  messages.back()->touched=0;
+  //messages.push_back(new struct_message);
+  struct_message *msg = new struct_message;
+  memcpy(msg->text, BLEmessage.c_str(),BLEmessage.length() +1);
+  memcpy(msg->type, "BraceletData\0", 13);
+  memcpy(msg->source, String(id).c_str(), String(id).length() +1);
+  memcpy(msg->dest, "0\0", 2);
+  memcpy(msg->messageCount, String(msgCount).c_str(), String(msgCount).length() +1);
+  memcpy(msg->touched, "0\0", 2);
   msgCount++;
   pref.putInt("msgCount",msgCount);
+  messages.push_back(msg);
+  // Serial.println("Message to send: ");
+  // Serial.println(messages.back()->text);
   LoRa.beginPacket();
-  LoRa.print((char*)&message);
+  char buffer[sizeof(struct_message)+1];
+  memset(buffer, '\0', sizeof(struct_message)+1);
+  memcpy(buffer, msg, sizeof(struct_message)+1);
+  for(int i=0;i<sizeof(struct_message)+1;i++){
+    Serial.print(buffer[i]);
+    LoRa.write(buffer[i]);
+  }
+  Serial.println("");
+  //String prova = String(msg->type) + String(",") + String(msg->text) + String(",") + String(msg->source) + String(",") + String(msg->dest) + String(",") + String(msg->messageCount) + String(",") + String(msg->touched);
+  //Serial.println(prova);
+  //LoRa.print(buffer);
+  //LoRa.print("ciao");
   LoRa.endPacket();
+  Serial.println("Message sent");
+  //LoRa.onReceive(OnReceive);
   LoRa.receive(); 
+  data_ready=false;
 }
+
 
 
 void readBLE(){
   Serial.println("Reading BLE");
-  
+  MacAddress.clear();
   pBLEScan = BLEDevice::getScan();
   pBLEScan->setActiveScan(true);
   pBLEScan->setAdvertisedDeviceCallbacks(new callbackgenerica());
@@ -209,7 +199,7 @@ void readBLE(){
         
       MacAddress[String(peripheral.getAddress().toString().c_str())]=buffer;
       pClient->disconnect();
-
+      data_ready=true;
     }
     else{     
       continue;
@@ -322,7 +312,7 @@ void setup(){
       Serial.println("ho gia settato un altro esp");
       ReadBLE.enable();
       searchAncore_task.disable();
-      LoRa.receive();
+      //LoRa.receive();
     }else{
       Serial.println("non ho ancora settato un altro esp");
       ReadBLE.disable();
@@ -336,6 +326,40 @@ void setup(){
 }
 
 void loop() {
-  
+  if(data_avaible){
+    char incoming[250];
+    int i=0;                 
+
+    while (LoRa.available()) {            // can't use readString() in callback, so
+      incoming[i] = (char)LoRa.read();
+      Serial.print(incoming[i]);      // add bytes one by one
+      i++;
+    }
+    struct_message* current=new struct_message;
+    Serial.println("");
+    memcpy(current, incoming, sizeof(message));
+    Serial.println(incoming);
+    Serial.println("Message received: ");
+    Serial.print("touched:   ");
+    Serial.println(current->touched);
+
+    Serial.print("messageCount:   ");
+    Serial.println(current->messageCount);
+
+    Serial.print("source:   ");
+    Serial.println(current->source);
+
+    Serial.print("text:   ");
+    Serial.println(current->text);
+
+    Serial.print("type:   ");
+    Serial.println(current->type);
+
+    Serial.print("dest:   ");
+    Serial.println(current->dest);
+    free(current);
+    data_avaible=false;
+    Serial.println(esp_get_free_heap_size());
+  }
   ts.execute();
 }
