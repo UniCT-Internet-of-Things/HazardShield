@@ -5,6 +5,7 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 #include <function/functions.cpp>
+#include <list>
 
 #define ss 18
 #define rst 23
@@ -40,18 +41,34 @@ Scheduler ts;
 Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
 Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
 
+typedef struct struct_message {
+    char type[20];
+    char text[100]; 
+    char source[30];
+    char dest[30]; 
+    char messageCount[30];
+} struct_message;
+
+struct_message message;
+JsonDocument MacAddress;
+std::list<struct_message*> messages;
+
 //Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
 
 void OnReceive(int packetSize) {
   if (packetSize == 0) return;          // if there's no packet, return
 
-  String incoming = "";                 // payload of packet
+  char incoming[250];
+  int i=0;                 
 
   while (LoRa.available()) {            // can't use readString() in callback, so
-    incoming += (char)LoRa.read();      // add bytes one by one
+    incoming[i] = (char)LoRa.read();      // add bytes one by one
   }
 
-  Serial.println("Message: " + incoming);
+  memcpy(&message, incoming, sizeof(message));
+  
+
+  
   // LoRa.beginPacket();
   // String messagge = nominativo + value.c_str();
   // LoRa.print(messagge);
@@ -91,34 +108,24 @@ uint8_t remote_mac_prec[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 String remote_mac_next_str = "FF:FF:FF:FF:FF:FF";
 String remote_mac_prec_str = "FF:FF:FF:FF:FF:FF";
 
-typedef struct struct_message {
-    char type[20];
-    char text[100]; 
-    char source[30];
-    char dest[30]; 
-} struct_message;
 
-struct_message message;
-JsonDocument MacAddress;
 
 void sendBLE(){
-
       String BLEmessage;
       serializeJson(MacAddress, BLEmessage);
-      
+      messages.push_front(new struct_message);
+      memcpy(messages.front()->text, BLEmessage.c_str(),  100);
+      memcpy(messages.front()->type, "BraceletData", 20);
+      memcpy(messages.front()->source, String(id).c_str(), 30);
+      memcpy(messages.front()->dest, "0", 30);
+      memcpy(messages.front()->messageCount, String(msgCount).c_str(), 30);
+      msgCount++;
+      pref.putInt("msgCount",msgCount);
+
       LoRa.beginPacket();
-  
-      LoRa.print(id);   //original sender id
-      LoRa.print(0);    //final recipient 
-
       LoRa.print((char*)&message);
-
-      
-
-
       LoRa.endPacket();
-      LoRa.receive();
-  
+      LoRa.receive(); 
 }
 
 
@@ -268,6 +275,7 @@ void setup(){
   LoRa.onReceive(OnReceive);
 
   ho_settato_un_altro_esp=pref.getBool("set_esp");
+  msgCount=pref.getInt("msgCount");
 
   id=pref.getInt("id");
   Serial.println("ID: "+String(id));
