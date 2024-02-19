@@ -107,12 +107,13 @@ void sendBLE(){
       serializeJson(MacAddress, BLEmessage);
       
       LoRa.beginPacket();
-
+  
       LoRa.print(id);   //original sender id
       LoRa.print(0);    //final recipient 
 
       LoRa.print((char*)&message);
 
+      
 
 
       LoRa.endPacket();
