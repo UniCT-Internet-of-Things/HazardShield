@@ -111,21 +111,20 @@ String remote_mac_prec_str = "FF:FF:FF:FF:FF:FF";
 
 
 void sendBLE(){
-      String BLEmessage;
-      serializeJson(MacAddress, BLEmessage);
-      messages.push_front(new struct_message);
-      memcpy(messages.front()->text, BLEmessage.c_str(),  100);
-      memcpy(messages.front()->type, "BraceletData", 20);
-      memcpy(messages.front()->source, String(id).c_str(), 30);
-      memcpy(messages.front()->dest, "0", 30);
-      memcpy(messages.front()->messageCount, String(msgCount).c_str(), 30);
-      msgCount++;
-      pref.putInt("msgCount",msgCount);
-
-      LoRa.beginPacket();
-      LoRa.print((char*)&message);
-      LoRa.endPacket();
-      LoRa.receive(); 
+  String BLEmessage;
+  serializeJson(MacAddress, BLEmessage);
+  messages.push_back(new struct_message);
+  memcpy(messages.back()->text, BLEmessage.c_str(),  100);
+  memcpy(messages.back()->type, "BraceletData", 20);
+  memcpy(messages.back()->source, String(id).c_str(), 30);
+  memcpy(messages.back()->dest, "0", 30);
+  memcpy(messages.back()->messageCount, String(msgCount).c_str(), 30);
+  msgCount++;
+  pref.putInt("msgCount",msgCount);
+  LoRa.beginPacket();
+  LoRa.print((char*)&message);
+  LoRa.endPacket();
+  LoRa.receive(); 
 }
 
 
