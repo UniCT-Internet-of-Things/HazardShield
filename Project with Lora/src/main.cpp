@@ -41,11 +41,7 @@ Scheduler ts;
 
 Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
 Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
-Task handle_message_queaue(10000,TASK_FOREVER,&handle_queaue,&ts,false);
-
-void handle_queaue(){
-}
-
+Task handle_message_queaue(4000,TASK_FOREVER,&handle_queaue,&ts,true);
 
 typedef struct struct_message {
     char type[20];
@@ -56,17 +52,71 @@ typedef struct struct_message {
     char touched[4];
 } struct_message;
 
+std::list<char*> messaggi_in_arrivo;
+bool data_avaible=false; 
+
+void handle_queaue(){
+  Serial.println("Handling queaue");
+  if(messaggi_in_arrivo.size()==0){
+    Serial.println("No message to handle");
+    return;
+  }
+  char* incoming=messaggi_in_arrivo.front();
+  messaggi_in_arrivo.pop_front();
+    
+  Serial.println("Message received: ");
+  
+  struct_message* current=new struct_message;
+  memcpy(current, incoming, sizeof(struct_message));
+  
+  Serial.println("Message received: ");
+  Serial.print("touched:   ");
+  Serial.println(current->touched);
+
+  Serial.print("messageCount:   ");
+  Serial.println(current->messageCount);
+
+  Serial.print("source:   ");
+  Serial.println(current->source);
+
+  Serial.print("text:   ");
+  Serial.println(current->text);
+
+  Serial.print("type:   ");
+  Serial.println(current->type);
+
+  Serial.print("dest:   ");
+  Serial.println(current->dest);
+
+  free(current);
+  free(incoming);
+
+  data_avaible=false;
+  Serial.println(esp_get_free_heap_size());
+}
+
+
+
 
 struct_message message;
 JsonDocument MacAddress;
 std::list<struct_message*> messages;
+
 struct_message *msg = new struct_message;
-bool data_avaible=false; 
+
 
 //Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
 
+
 void OnReceive(int packetSize) {
-  data_avaible=true;
+  if (packetSize == 0) return;          // if there's no packet, return
+  int i=0;                 
+  char* incoming = (char*)malloc(packetSize);
+  while (LoRa.available()) {            
+    incoming[i] = (char)LoRa.read();
+    i++;
+  }
+  messaggi_in_arrivo.push_back(incoming);
 }
 
 class callbackSetId : public BLECharacteristicCallbacks {
@@ -110,8 +160,9 @@ void sendBLE(){
   Serial.println("Sending BLE");
   String BLEmessage;
   serializeJson(MacAddress, BLEmessage);
-  //messages.push_back(new struct_message);
+
   struct_message *msg = new struct_message;
+
   memcpy(msg->text, BLEmessage.c_str(),BLEmessage.length() +1);
   memcpy(msg->type, "BraceletData\0", 13);
   memcpy(msg->source, String(id).c_str(), String(id).length() +1);
@@ -120,25 +171,22 @@ void sendBLE(){
   memcpy(msg->touched, "0\0", 2);
   msgCount++;
   pref.putInt("msgCount",msgCount);
-  messages.push_back(msg);
-  // Serial.println("Message to send: ");
-  // Serial.println(messages.back()->text);
-  LoRa.beginPacket();
+
   char buffer[sizeof(struct_message)+1];
-  memset(buffer, '\0', sizeof(struct_message)+1);
-  memcpy(buffer, msg, sizeof(struct_message)+1);
+  memcpy(buffer, msg, sizeof(struct_message));
+  buffer[sizeof(struct_message)]='\0';
+  
+
+
+  messages.push_back(msg);
+
+  LoRa.beginPacket();
   for(int i=0;i<sizeof(struct_message)+1;i++){
-    Serial.print(buffer[i]);
     LoRa.write(buffer[i]);
   }
-  Serial.println("");
-  //String prova = String(msg->type) + String(",") + String(msg->text) + String(",") + String(msg->source) + String(",") + String(msg->dest) + String(",") + String(msg->messageCount) + String(",") + String(msg->touched);
-  //Serial.println(prova);
-  //LoRa.print(buffer);
-  //LoRa.print("ciao");
   LoRa.endPacket();
+
   Serial.println("Message sent");
-  //LoRa.onReceive(OnReceive);
   LoRa.receive(); 
   data_ready=false;
 }
@@ -294,7 +342,7 @@ void setup(){
   pref.putBool("set_esp",true);
   ho_settato_un_altro_esp=pref.getBool("set_esp");
   msgCount=pref.getInt("msgCount");
-
+  LoRa.enableCrc();
   id=pref.getInt("id");
   Serial.println("ID: "+String(id));
 
@@ -312,7 +360,7 @@ void setup(){
       Serial.println("ho gia settato un altro esp");
       ReadBLE.enable();
       searchAncore_task.disable();
-      //LoRa.receive();
+      LoRa.receive();
     }else{
       Serial.println("non ho ancora settato un altro esp");
       ReadBLE.disable();
@@ -321,45 +369,11 @@ void setup(){
     }
     
   }
-
+  //ReadBLE.disable();
   Serial.println("ID: "+String(id));
 }
 
 void loop() {
-  if(data_avaible){
-    char incoming[250];
-    int i=0;                 
-
-    while (LoRa.available()) {            // can't use readString() in callback, so
-      incoming[i] = (char)LoRa.read();
-      Serial.print(incoming[i]);      // add bytes one by one
-      i++;
-    }
-    struct_message* current=new struct_message;
-    Serial.println("");
-    memcpy(current, incoming, sizeof(message));
-    Serial.println(incoming);
-    Serial.println("Message received: ");
-    Serial.print("touched:   ");
-    Serial.println(current->touched);
-
-    Serial.print("messageCount:   ");
-    Serial.println(current->messageCount);
-
-    Serial.print("source:   ");
-    Serial.println(current->source);
-
-    Serial.print("text:   ");
-    Serial.println(current->text);
-
-    Serial.print("type:   ");
-    Serial.println(current->type);
-
-    Serial.print("dest:   ");
-    Serial.println(current->dest);
-    free(current);
-    data_avaible=false;
-    Serial.println(esp_get_free_heap_size());
-  }
+  
   ts.execute();
 }
