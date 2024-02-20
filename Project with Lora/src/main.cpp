@@ -37,12 +37,13 @@ void readBLE();
 void searchAncore();
 void sendBLE();
 void handle_queaue();
+void handle_ack();
 Scheduler ts;
 
 Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
 Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
 Task handle_message_queaue(4000,TASK_FOREVER,&handle_queaue,&ts,true);
-
+Task handle_message_ack_queaue(15000,TASK_FOREVER,&handle_ack,&ts,true);
 typedef struct struct_message {
     char type[20];
     char text[100]; 
@@ -54,6 +55,7 @@ typedef struct struct_message {
 
 std::list<char*> messaggi_in_arrivo;
 bool data_avaible=false; 
+std::list<struct_message*> messages;
 
 void handle_queaue(){
   Serial.println("Handling queaue");
@@ -95,12 +97,29 @@ void handle_queaue(){
   Serial.println(esp_get_free_heap_size());
 }
 
+void handle_ack(){
+  Serial.println("Handling ack");
+  if(messages.size()==0){
+    Serial.println("No message to handle");
+    return;
+  }
+  struct_message* current=messages.front();
+  if(current->touched[0]=='1'){
+    Serial.println("Message touched");
+    messages.pop_front();
+  }
+  else{
+    current->touched[0]='1';
+    Serial.println("Message not touched");
+  }
 
+  Serial.println(esp_get_free_heap_size());
+}
 
 
 struct_message message;
 JsonDocument MacAddress;
-std::list<struct_message*> messages;
+
 
 struct_message *msg = new struct_message;
 
