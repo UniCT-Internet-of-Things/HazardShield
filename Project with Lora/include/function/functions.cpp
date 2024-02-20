@@ -10,6 +10,14 @@ BLEAdvertisedDevice myAncora;
 bool AncoraFound = false;
 BLEScan *pBLEScan;
 
+#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914c"
+#define ID_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a7"
+
+
+#define SERVICE_UUID_bracelet "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
+#define TEMPERATURE_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define SATURATION_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
+#define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
 
 class callbackgenerica: public BLEAdvertisedDeviceCallbacks {
   void onResult(BLEAdvertisedDevice advertisedDevice) {
@@ -47,9 +55,126 @@ void macStrToByteArray(const String &macStr, uint8_t *macArray) {
         macArray[i] = strtoul(hexNum, NULL, 16);
     }
 }
+class callbackSetId : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic *pCharacteristic);
+};
 
-#define SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914c"
-#define ID_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a7"
+void StartAdvertisingToSetID(){
+  
+  BLECharacteristic *pAncoraCharacteristic;
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+  BLEService *pService = pServer->createService(SERVICE_UUID);
+  pAncoraCharacteristic = pService->createCharacteristic(ID_CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+  pAncoraCharacteristic->setCallbacks(new callbackSetId());
+  pAncoraCharacteristic->setValue("");
+
+  BLEDescriptor *pDescriptor = new BLEDescriptor((uint16_t)0x2901);
+  pDescriptor->setValue("ID");
+  pAncoraCharacteristic->addDescriptor(pDescriptor);
+
+  pService->start();
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  BLEDevice::startAdvertising();
+
+}
+
+
+
+
+
+String read_BLE_charcteristic(BLERemoteService* pRemoteService, const char* charUUID){
+  BLERemoteCharacteristic* pRemoteCharacteristic;
+  pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
+  if (pRemoteCharacteristic == nullptr) {
+    Serial.print("Failed to find characteristic UUID: ");
+    Serial.println(charUUID);
+    free(pRemoteCharacteristic);
+    return "fail";
+  }
+  if(pRemoteCharacteristic->canRead()){
+    std::string value = pRemoteCharacteristic->readValue();
+    free(pRemoteCharacteristic);
+    return String(value.c_str());
+  }
+  free(pRemoteCharacteristic);
+  return "fail";
+
+}
+
+extern Task searchAncore_task;
+extern Preferences pref;
+extern Task ReadBLE;
+extern int id;
+void searchAncore(){
+  Serial.println("Reading BLEfor ancore");
+  
+  pBLEScan = BLEDevice::getScan();
+  pBLEScan->setActiveScan(true);
+  pBLEScan->setAdvertisedDeviceCallbacks(new callbackgenerica());
+  pBLEScan->start(5);
+  BLEScanResults foundDevices = pBLEScan->getResults();
+
+  for(int i = 0; i < foundDevices.getCount(); i++){
+    BLEAdvertisedDevice peripheral=foundDevices.getDevice(i);
+    
+    //Serial.println(peripheral.getAddress().toString().c_str());
+    if(peripheral.haveName())
+      Serial.println(String(peripheral.getName().c_str()));
+
+    if(peripheral.haveName()&&String(peripheral.getName().c_str()) =="Ancora"){
+
+      pClient->connect(peripheral.getAddress());
+      BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
+      if(pRemoteService==nullptr){
+        Serial.println("service not found");
+        continue;
+      }
+
+      BLERemoteCharacteristic* pRemoteCharacteristic=  pRemoteService->getCharacteristic(ID_CHARACTERISTIC_UUID);
+      if(pRemoteCharacteristic==nullptr){
+        Serial.println("characteristic not found");
+        continue;
+      }
+      pRemoteCharacteristic->writeValue(String(id+1).c_str());
+    
+      pClient->disconnect();
+      searchAncore_task.disable();
+      pref.putBool("set_esp",true);
+      ReadBLE.enable();
+      break;
+
+    }
+  }
+}
+extern int id;
+
+void callbackSetId::onWrite(BLECharacteristic *pCharacteristic) {
+    String value = pCharacteristic->getValue().c_str();
+    if (value.toInt() != 0) {
+      Serial.println("New value: " + value);
+      id=value.toInt();
+      pref.putInt("id",id);
+      BLEDevice::stopAdvertising();
+      
+      ReadBLE.disable();
+      searchAncore_task.enable();
+      //LoRa.receive();
+  
+    }
+  }
+
+typedef struct struct_message {
+    char type[20];
+    char text[100]; 
+    char source[8];
+    char dest[8]; 
+    char messageCount[12];
+    char touched[4];
+} struct_message;
 
 
 #endif
