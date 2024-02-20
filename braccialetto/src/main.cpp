@@ -47,6 +47,16 @@ void setup() {
   pTemperatureCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
   pHeartBeatCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
   pSaturationCharacteristic->setCallbacks(new MyCharacteristicCallbacks());
+  //AGGIUNGO I DESCRIPTOR
+  BLEDescriptor *pTemperatureDescriptor = new BLEDescriptor(BLEUUID((uint16_t)0x2901));
+  pTemperatureDescriptor->setValue("Temperature");
+  pTemperatureCharacteristic->addDescriptor(pTemperatureDescriptor);
+  BLEDescriptor *pHeartBeatDescriptor = new BLEDescriptor(BLEUUID((uint16_t)0x2901));
+  pHeartBeatDescriptor->setValue("HeartBeat");
+  pHeartBeatCharacteristic->addDescriptor(pHeartBeatDescriptor);
+  BLEDescriptor *pSaturationDescriptor = new BLEDescriptor(BLEUUID((uint16_t)0x2901));
+  pSaturationDescriptor->setValue("Saturation");
+  pSaturationCharacteristic->addDescriptor(pSaturationDescriptor);
   pTemperatureCharacteristic->setValue("1");
   pHeartBeatCharacteristic->setValue("0");
   pSaturationCharacteristic->setValue("3");

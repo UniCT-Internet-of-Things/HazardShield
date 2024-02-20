@@ -4,6 +4,8 @@
 #include <BLEDevice.h>
 #include <SPI.h>     
 #include <Arduino.h>
+#include <TaskScheduler.h>
+#include <Preferences.h>
 
 BLEClient* pClient;
 BLEAdvertisedDevice myAncora;
@@ -85,22 +87,23 @@ void StartAdvertisingToSetID(){
 
 
 
-
+BLERemoteCharacteristic* pRemoteCharacteristic1;
 String read_BLE_charcteristic(BLERemoteService* pRemoteService, const char* charUUID){
-  BLERemoteCharacteristic* pRemoteCharacteristic;
-  pRemoteCharacteristic = pRemoteService->getCharacteristic(charUUID);
-  if (pRemoteCharacteristic == nullptr) {
+  
+  //Serial.println("Reading characteristic");
+  pRemoteCharacteristic1 = pRemoteService->getCharacteristic(charUUID);
+  if (pRemoteCharacteristic1 == nullptr) {
     Serial.print("Failed to find characteristic UUID: ");
     Serial.println(charUUID);
-    free(pRemoteCharacteristic);
+    //free(pRemoteCharacteristic);
     return "fail";
   }
-  if(pRemoteCharacteristic->canRead()){
-    std::string value = pRemoteCharacteristic->readValue();
-    free(pRemoteCharacteristic);
+  if(pRemoteCharacteristic1->canRead()){
+    std::string value = pRemoteCharacteristic1->readValue();
+    //free(pRemoteCharacteristic);
     return String(value.c_str());
   }
-  free(pRemoteCharacteristic);
+  //free(pRemoteCharacteristic);
   return "fail";
 
 }

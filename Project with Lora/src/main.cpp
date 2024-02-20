@@ -34,7 +34,7 @@ Scheduler ts;
 
 Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
 Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
-Task handle_message_queaue(4000,TASK_FOREVER,&handle_queaue,&ts,true);
+Task handle_message_queaue(500,TASK_FOREVER,&handle_queaue,&ts,true);
 Task handle_message_ack_queaue(15000,TASK_FOREVER,&handle_ack,&ts,true);
 
 
@@ -43,37 +43,96 @@ bool data_avaible=false;
 std::list<struct_message*> messages_send;
 
 void handle_queaue(){
-  Serial.println("Handling queaue");
+  //Serial.println("Handling queaue");
   if(messaggi_in_arrivo.size()==0){
-    Serial.println("No message to handle");
+    //Serial.println("No message to handle");
     return;
   }
+  Serial.println("Handling queau");
   char* incoming=messaggi_in_arrivo.front();
   messaggi_in_arrivo.pop_front();
     
   Serial.println("Message received: ");
-  
   struct_message* current=new struct_message;
   memcpy(current, incoming, sizeof(struct_message));
-  
-  Serial.println("Message received: ");
-  Serial.print("touched:   ");
-  Serial.println(current->touched);
 
-  Serial.print("messageCount:   ");
-  Serial.println(current->messageCount);
 
-  Serial.print("source:   ");
-  Serial.println(current->source);
+  Serial.println("Message sent");
+  LoRa.receive();
+  if (String(current->dest).toInt() == pref.getInt("id")){
+    if(String(current->type)=="ACK"){
+      for (std::list<struct_message*>::iterator it = messages_send.begin(); it != messages_send.end(); ++it){
+        if(String((*it)->messageCount)==String(current->text)){
+          Serial.println("ACK eliminato");
+          //elimina it da messages_send
+          messages_send.erase(it);
+          break;
+        }
+      }
+    }
+  }else{
+    if(String(current->source).toInt() == (pref.getInt("id")-1)){
+      char buffer[sizeof(struct_message)+1];
+      memcpy(buffer, current, sizeof(struct_message));
+      buffer[sizeof(struct_message)]='\0';
 
-  Serial.print("text:   ");
-  Serial.println(current->text);
+      messages_send.push_back(current);
 
-  Serial.print("type:   ");
-  Serial.println(current->type);
+      LoRa.beginPacket();
+      for(int i=0;i<sizeof(struct_message)+1;i++){
+        LoRa.write(buffer[i]);
+      }
+      LoRa.endPacket();
 
-  Serial.print("dest:   ");
-  Serial.println(current->dest);
+      Serial.println("Inoltrato messaggio");
+      LoRa.receive(); 
+
+      memcpy(current->type, "ACK\0", 4);
+      String temp_dest = current->dest;
+      memcpy(current->dest, current->source, String(current->source).length() +1);
+      memcpy(current->source, temp_dest.c_str(), temp_dest.length() +1);
+      String temp_msgCount = current->messageCount;
+      memcpy(current->messageCount, String(msgCount).c_str(), String(msgCount).length() +1);
+      memcpy(current->touched, "0\0", 2);
+      memcpy(current->text, temp_msgCount.c_str(),temp_msgCount.length() +1);
+      msgCount++;
+      pref.putInt("msgCount",msgCount);
+      memcpy(buffer, current, sizeof(struct_message));
+      buffer[sizeof(struct_message)]='\0';
+
+      LoRa.beginPacket();
+      for(int i=0;i<sizeof(struct_message)+1;i++){
+        LoRa.write(buffer[i]);
+      }
+      LoRa.endPacket();
+
+      Serial.println("ACK sent");
+      LoRa.receive(); 
+      
+      return;
+      
+    }else{
+      Serial.println("Message not for me");
+    }
+  }
+  // Serial.println("Message received: ");
+  // Serial.print("touched:   ");
+  // Serial.println(current->touched);
+
+  // Serial.print("messageCount:   ");
+  // Serial.println(current->messageCount);
+
+  // Serial.print("source:   ");
+  // Serial.println(current->source);
+
+  // Serial.print("text:   ");
+  // Serial.println(current->text);
+
+  // Serial.print("type:   ");
+  // Serial.println(current->type);
+
+  // Serial.print("dest:   ");
+  // Serial.println(current->dest);
 
   free(current);
   free(incoming);
@@ -91,6 +150,7 @@ void handle_ack(){
   if(current->touched[0]=='1'){
     Serial.println("Message touched");
     messages_send.pop_front();
+    free(current);
   }
   else{
     current->touched[0]='1';
@@ -238,7 +298,7 @@ void setup(){
   BLEDevice::init("Ancora");
   pClient = BLEDevice::createClient();
   LoRa.onReceive(OnReceive);
-  pref.putBool("set_esp",true);
+  pref.putBool("set_esp",true); //ricordiamoci di metterlo a false nella versione finale
   ho_settato_un_altro_esp=pref.getBool("set_esp");
   msgCount=pref.getInt("msgCount");
   LoRa.enableCrc();
