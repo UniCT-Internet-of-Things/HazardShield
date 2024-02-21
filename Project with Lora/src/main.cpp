@@ -91,13 +91,12 @@ void handle_queaue(){
         //quindi lo inoltro a sinistra
         char buffer[sizeof(struct_message)+1];
 
-        struct_message* inoltro=new struct_message;
-        Serial.println("devo inoltrare:");
-        Serial.println("da:"+String(current->source)+"verso"+String(current->dest));
-      
+        struct_message* inoltro = new struct_message;
+
         memset(inoltro,0,sizeof(struct_message));
 
         memcpy(inoltro->type, current->type, String(current->type).length()+1);
+        String temp_dest(current->dest);
         memcpy(inoltro->dest, current->dest, String(current->dest).length()+1);
         memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length()+1);
         memcpy(inoltro->source, String(id).c_str(), String(id).length()+1);
@@ -107,8 +106,6 @@ void handle_queaue(){
         memcpy(inoltro->touched, "0\0", 2);
         memcpy(inoltro->text, current->text, String(current->text).length()+1);
         
-        Serial.println("inoltro:"+String(inoltro->source));
-
         messages_send.push_back(inoltro);
 
         memcpy(buffer, inoltro, sizeof(struct_message));
@@ -129,7 +126,7 @@ void handle_queaue(){
       //lo inoltro a destra
       char buffer[sizeof(struct_message)+1];
 
-      struct_message* inoltro=new struct_message;
+      struct_message* inoltro = new struct_message;
 
       memset(inoltro,0,sizeof(struct_message));
 
@@ -167,16 +164,15 @@ void handle_queaue(){
       //se ho inoltrato un messaggio devo anche inviare l'ack per
       //dire che ho ricevuto il messaggio
 
-      Serial.println("Inoltrato messaggio");
-      Serial.println("da:"+String(current->source)+"verso"+String(current->dest));
+      Serial.println("Inoltrato messaggio da: "+String(current->source)+" a: "+String(current->dest));
       struct_message ack;
 
       memset(&ack,0,sizeof(struct_message));
 
       memcpy(ack.type, "ACK\0", 4);
       memcpy(ack.dest, current->source, String(current->source).length()+1);
-      memcpy(ack.original_sender, current->original_sender, String(current->original_sender).length()+1);
-      memcpy(ack.source,String(id).c_str(), String(id).length()+1);
+      memcpy(ack.original_sender, String(id).c_str(), String(id).length() +1);
+      memcpy(ack.source, String(id).c_str(), String(id).length() +1);
       String temp_msgCount = current->messageCount;
       memcpy(ack.messageCount, String(msgCount).c_str(), String(msgCount).length()+1);  
       memcpy(ack.touched, "0\0", 2);
