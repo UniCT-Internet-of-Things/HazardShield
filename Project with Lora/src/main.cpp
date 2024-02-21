@@ -43,65 +43,106 @@ bool data_avaible=false;
 std::list<struct_message*> messages_send;
 
 void handle_queaue(){
-  //Serial.println("Handling queaue");
+
   if(messaggi_in_arrivo.size()==0){
-    //Serial.println("No message to handle");
     return;
   }
-  Serial.println("Handling queau");
+  Serial.println("Handling queaue");
   char* incoming=messaggi_in_arrivo.front();
   messaggi_in_arrivo.pop_front();
     
-  Serial.println("Message received: ");
+  Serial.println("Message received");
   struct_message* current=new struct_message;
   memcpy(current, incoming, sizeof(struct_message));
 
+  bool ho_inviato_un_message=false;
 
-  Serial.println("Message sent");
-  LoRa.receive();
-  if (String(current->dest).toInt() == pref.getInt("id")){
+  if (String(current->dest).toInt() == pref.getInt("id")&&
+      (String(current->source).toInt() == id+1||
+      String(current->source).toInt() == id-1)){
     if(String(current->type)=="ACK"){
       for (std::list<struct_message*>::iterator it = messages_send.begin(); it != messages_send.end(); ++it){
         if(String((*it)->messageCount)==String(current->text)){
           Serial.println("ACK eliminato");
           //elimina it da messages_send
+          Serial.println((*it)->messageCount);
           messages_send.erase(it);
           break;
         }
       }
     }
-  }else{
-    if(String(current->source).toInt() == (pref.getInt("id")-1)){
+    else if(String(current->type)=="MSG_to_bracelet"){
+      //scrivere come inviare un messaggio per i braccialetti
+      //e gestire l'inoltro del messaggio se non conosco il destinatario
+    }
+    else if(String(current->type)=="BraceletData"){
+      // io sono il gateway se ricevo dei braceletdata
+      // devo inviarli al server
+      //send_string_to_server(String("{\""+ String(current->original_sender) +"\":\""+current->text+"\"}"));
+      ho_inviato_un_message=true;
+    }
+  }
+  else{
+    //il messaggio non è per me ma forse lo devo inoltrare  
+    
+    if(String(current->dest).toInt() < id &&
+      String(current->source).toInt() == (pref.getInt("id")+1)){
+        //il messaggio proviene da destra ed è per sinistra
+        //quindi lo inoltro a sinistra
+        char buffer[sizeof(struct_message)+1];
+
+        struct_message* inoltro;
+
+        memset(inoltro,0,sizeof(struct_message));
+
+        memcpy(inoltro->type, current->type, String(current->type).length());
+        String temp_dest(current->dest);
+        memcpy(inoltro->dest, current->dest, String(current->dest).length());
+        memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length());
+        memcpy(inoltro->source, String(id).c_str(), String(id).length());
+        memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length());  
+        msgCount++;
+        pref.putInt("msgCount",msgCount);
+        memcpy(inoltro->touched, "0\0", 2);
+        memcpy(inoltro->text, current->text, String(current->text).length());
+        
+        messages_send.push_back(inoltro);
+
+        memcpy(buffer, inoltro, sizeof(struct_message));
+        buffer[sizeof(struct_message)]='\0';
+
+        LoRa.beginPacket();
+        for(int i=0;i<sizeof(struct_message)+1;i++){
+          LoRa.write(buffer[i]);
+        }
+        LoRa.endPacket();
+        ho_inviato_un_message=true;
+      }
+
+    if(String(current->dest).toInt() > id &&
+      String(current->source).toInt() == (pref.getInt("id")-1)){
+      //se il messaggio proviene da sinistra ed è per un nodo alla destra
+      //lo inoltro a destra
       char buffer[sizeof(struct_message)+1];
 
-      memset(current->source,'\0',8);
-      memcpy(current->source, String(pref.getInt("id")).c_str(), String(pref.getInt("id")).length());
-     
-      memcpy(buffer, current, sizeof(struct_message));
-      buffer[sizeof(struct_message)]='\0';
+      struct_message* inoltro;
 
-      messages_send.push_back(current);
+      memset(inoltro,0,sizeof(struct_message));
 
-      LoRa.beginPacket();
-      for(int i=0;i<sizeof(struct_message)+1;i++){
-        LoRa.write(buffer[i]);
-      }
-      LoRa.endPacket();
-
-      Serial.println("Inoltrato messaggio");
-      LoRa.receive(); 
-
-      memcpy(current->type, "ACK\0", 4);
-      String temp_dest = current->dest;
-      memcpy(current->dest, current->source, String(current->source).length() +1);
-      memcpy(current->source, temp_dest.c_str(), temp_dest.length() +1);
-      String temp_msgCount = current->messageCount;
-      memcpy(current->messageCount, String(msgCount).c_str(), String(msgCount).length() +1);
-      memcpy(current->touched, "0\0", 2);
-      memcpy(current->text, temp_msgCount.c_str(),temp_msgCount.length() +1);
+      memcpy(inoltro->type, current->type, String(current->type).length());
+      String temp_dest(current->dest);
+      memcpy(inoltro->dest, current->dest, String(current->dest).length());
+      memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length());
+      memcpy(inoltro->source, String(id).c_str(), String(id).length());
+      memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length());  
       msgCount++;
       pref.putInt("msgCount",msgCount);
-      memcpy(buffer, current, sizeof(struct_message));
+      memcpy(inoltro->touched, "0\0", 2);
+      memcpy(inoltro->text, current->text, String(current->text).length());
+      
+      messages_send.push_back(inoltro);
+
+      memcpy(buffer, inoltro, sizeof(struct_message));
       buffer[sizeof(struct_message)]='\0';
 
       LoRa.beginPacket();
@@ -109,22 +150,55 @@ void handle_queaue(){
         LoRa.write(buffer[i]);
       }
       LoRa.endPacket();
-
-      Serial.println("ACK sent");
-      LoRa.receive(); 
+      ho_inviato_un_message=true;
+    }
       
-      return;
-      
-    }else{
+    else{
       Serial.println("Message not for me");
     }
   }
 
+  if(ho_inviato_un_message){
+      //se ho inoltrato un messaggio devo anche inviare l'ack per
+      //dire che ho ricevuto il messaggio
+
+      Serial.println("Inoltrato messaggio");
+
+      struct_message ack;
+
+      memset(&ack,0,sizeof(struct_message));
+
+      memcpy(ack.type, "ACK\0", 4);
+      String temp_dest(current->dest);
+      memcpy(ack.dest, current->source, String(current->source).length());
+      memcpy(ack.original_sender, current->original_sender, String(current->original_sender).length());
+      memcpy(ack.source, temp_dest.c_str(), temp_dest.length());
+      String temp_msgCount = current->messageCount;
+      memcpy(ack.messageCount, String(msgCount).c_str(), String(msgCount).length());  
+      memcpy(ack.touched, "0\0", 2);
+      memcpy(ack.text, temp_msgCount.c_str(),temp_msgCount.length());
+      
+      msgCount++;
+      pref.putInt("msgCount",msgCount);
+
+      char buffer[sizeof(struct_message)+1];
+      memcpy(buffer, &ack, sizeof(struct_message));
+      buffer[sizeof(struct_message)]='\0';  
+      LoRa.beginPacket();
+      for(int i=0;i<sizeof(struct_message)+1;i++){
+        LoRa.write(buffer[i]);
+      }
+      LoRa.endPacket();
+      Serial.println("ACK sent");
+      
+    }
+    
   free(current);
   free(incoming);
-
+  LoRa.receive(); 
   Serial.println(esp_get_free_heap_size());
 }
+
 
 void handle_ack(){
   Serial.println("Handling ack");
@@ -140,6 +214,7 @@ void handle_ack(){
   }
   else{
     current->touched[0]='1';
+    Serial.println(current->messageCount);
     Serial.println("Message not touched");
   }
 
@@ -159,6 +234,7 @@ void OnReceive(int packetSize) {
     i++;
   }
   messaggi_in_arrivo.push_back(incoming);
+  LoRa.receive(); 
 }
 
 
@@ -286,9 +362,7 @@ void setup(){
   BLEDevice::init("Ancora");
   pClient = BLEDevice::createClient();
 
-
-  
-  pref.putBool("set_esp",true); //ricordiamoci di metterlo a false nella versione finale
+  //pref.putBool("set_esp",true); //ricordiamoci di metterlo a false nella versione finale
   ho_settato_un_altro_esp=pref.getBool("set_esp");
   msgCount=pref.getInt("msgCount");
   id=pref.getInt("id");
@@ -311,7 +385,6 @@ void setup(){
       LoRa.receive();
     }else{
       Serial.println("non ho ancora settato un altro esp");
-      ReadBLE.disable();
       searchAncore_task.enable();
       
     }

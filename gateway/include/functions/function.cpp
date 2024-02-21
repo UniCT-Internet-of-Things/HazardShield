@@ -91,7 +91,6 @@ void searchAncore(){
       searchAncore_task.disable();
       pref.putBool("set_esp",true);
       break;
-
     }
   }
 }
@@ -109,16 +108,14 @@ bool send_string_to_server(String toSend){
     String response = http.getString();  //Get the response to the request
     Serial.println(httpResponseCode);   //Print return code
     Serial.println(response);        //Print request answer
-    http.end();          
+    http.end();      
+    return true;    
   } else {
     Serial.print("Error on sending POST: ");
     Serial.println(httpResponseCode);
-
     http.end();
-
+    return false;
   }
-
-  Serial.println("Messaggio ricevuto");
 }
 
 typedef struct struct_message {

@@ -21,7 +21,7 @@ def send_request():
             print("Sending request to the gateway")
             response = requests.post("http://"+gateway_ip+":80/receive_data", data = {'datas': 'data', 'values': {"test":"2","test2":"4"}})   
             print(response)
-            time.sleep(5)
+            time.sleep(10000)
 
 thread = threading.Thread(target=send_request)
 
