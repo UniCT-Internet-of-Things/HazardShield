@@ -73,6 +73,10 @@ void handle_queaue(){
   }else{
     if(String(current->source).toInt() == (pref.getInt("id")-1)){
       char buffer[sizeof(struct_message)+1];
+
+      memset(current->source,'\0',8);
+      memcpy(current->source, String(pref.getInt("id")).c_str(), String(pref.getInt("id")).length());
+     
       memcpy(buffer, current, sizeof(struct_message));
       buffer[sizeof(struct_message)]='\0';
 
@@ -115,24 +119,6 @@ void handle_queaue(){
       Serial.println("Message not for me");
     }
   }
-  // Serial.println("Message received: ");
-  // Serial.print("touched:   ");
-  // Serial.println(current->touched);
-
-  // Serial.print("messageCount:   ");
-  // Serial.println(current->messageCount);
-
-  // Serial.print("source:   ");
-  // Serial.println(current->source);
-
-  // Serial.print("text:   ");
-  // Serial.println(current->text);
-
-  // Serial.print("type:   ");
-  // Serial.println(current->type);
-
-  // Serial.print("dest:   ");
-  // Serial.println(current->dest);
 
   free(current);
   free(incoming);
@@ -163,8 +149,6 @@ void handle_ack(){
 
 struct_message message;
 JsonDocument MacAddress;
-
-//Task SendBLE(100,TASK_IMMEDIATE,&sendBLE,&ts,true);
 
 void OnReceive(int packetSize) {
   if (packetSize == 0) return;          // if there's no packet, return
@@ -208,6 +192,8 @@ void sendBLE(){
 
   memcpy(msg->text, BLEmessage.c_str(),BLEmessage.length() +1);
   memcpy(msg->type, "BraceletData\0", 13);
+  memcpy(msg->original_sender, String(id).c_str(), String(id).length() +1);
+  
   memcpy(msg->source, String(id).c_str(), String(id).length() +1);
   memcpy(msg->dest, "0\0", 2);
   memcpy(msg->messageCount, String(msgCount).c_str(), String(msgCount).length() +1);
@@ -287,21 +273,24 @@ void setup(){
 
   pref.begin("my_id", false); 
   Serial.begin(115200);
+
   LoRa.setPins(ss, rst, dio0);
   while (!LoRa.begin(866E6)) {
     Serial.println(".");
     delay(500); 
   }
   LoRa.setSyncWord(0xffff);
+  LoRa.onReceive(OnReceive);
   Serial.println("LoRa Initializing OK!");
 
   BLEDevice::init("Ancora");
   pClient = BLEDevice::createClient();
-  LoRa.onReceive(OnReceive);
+
+
+  
   pref.putBool("set_esp",true); //ricordiamoci di metterlo a false nella versione finale
   ho_settato_un_altro_esp=pref.getBool("set_esp");
   msgCount=pref.getInt("msgCount");
-  LoRa.enableCrc();
   id=pref.getInt("id");
   Serial.println("ID: "+String(id));
 

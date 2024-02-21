@@ -174,6 +174,7 @@ typedef struct struct_message {
     char type[20];
     char text[100]; 
     char source[8];
+    char original_sender[8];
     char dest[8]; 
     char messageCount[12];
     char touched[4];
