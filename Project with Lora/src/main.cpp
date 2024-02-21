@@ -116,6 +116,7 @@ void handle_queaue(){
           LoRa.write(buffer[i]);
         }
         LoRa.endPacket();
+        delay(500);
         ho_inviato_un_message=true;
       }
 
@@ -150,6 +151,7 @@ void handle_queaue(){
         LoRa.write(buffer[i]);
       }
       LoRa.endPacket();
+      delay(500);
       ho_inviato_un_message=true;
     }
       
@@ -163,16 +165,14 @@ void handle_queaue(){
       //dire che ho ricevuto il messaggio
 
       Serial.println("Inoltrato messaggio da: "+String(current->source)+" a: "+String(current->dest));
-
       struct_message ack;
 
       memset(&ack,0,sizeof(struct_message));
 
       memcpy(ack.type, "ACK\0", 4);
-      String temp_dest(current->dest);
       memcpy(ack.dest, current->source, String(current->source).length()+1);
-      memcpy(ack.original_sender, current->original_sender, String(current->original_sender).length()+1);
-      memcpy(ack.source, temp_dest.c_str(), temp_dest.length()+1);
+      memcpy(ack.original_sender, String(id).c_str(), String(id).length() +1);
+      memcpy(ack.source, String(id).c_str(), String(id).length() +1);
       String temp_msgCount = current->messageCount;
       memcpy(ack.messageCount, String(msgCount).c_str(), String(msgCount).length()+1);  
       memcpy(ack.touched, "0\0", 2);
@@ -189,6 +189,7 @@ void handle_queaue(){
         LoRa.write(buffer[i]);
       }
       LoRa.endPacket();
+      delay(500);
       Serial.println("ACK sent");
       
     }
@@ -288,7 +289,7 @@ void sendBLE(){
     LoRa.write(buffer[i]);
   }
   LoRa.endPacket();
-
+  delay(500);
   Serial.println("Message sent");
   LoRa.receive(); 
   data_ready=false;
@@ -391,7 +392,7 @@ void setup(){
     }
     
   }
-  ReadBLE.disable();
+  //ReadBLE.disable();
   Serial.println("ID: "+String(id));
 }
 
