@@ -32,10 +32,10 @@ void handle_ack();
 
 Scheduler ts;
 
-Task ReadBLE(10000,TASK_FOREVER,&readBLE,&ts,true);
+Task ReadBLE(15000,TASK_FOREVER,&readBLE,&ts,true);
 Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
-Task handle_message_queaue(500,TASK_FOREVER,&handle_queaue,&ts,true);
-Task handle_message_ack_queaue(15000,TASK_FOREVER,&handle_ack,&ts,true);
+Task handle_message_queaue(100,TASK_FOREVER,&handle_queaue,&ts,true);
+Task handle_message_ack_queaue(20000,TASK_FOREVER,&handle_ack,&ts,true);
 
 
 std::list<char*> messaggi_in_arrivo;
