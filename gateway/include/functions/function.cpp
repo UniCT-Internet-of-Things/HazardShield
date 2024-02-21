@@ -119,7 +119,6 @@ bool send_string_to_server(String toSend){
   }
 
   Serial.println("Messaggio ricevuto");
-  SendToServer = false;
 }
 
 typedef struct struct_message {
