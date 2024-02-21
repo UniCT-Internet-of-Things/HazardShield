@@ -19,9 +19,9 @@
 #include <functions/function.cpp>
 
 //SSID of your network
-char ssid[] = "Redmi Note 12 5G";
+char ssid[] = "iPhone di Marco";
 //password of your WPA Network
-char pass[] = "ciccio2305";
+char pass[] = "tapop110";
 
 #define ss 18
 #define rst 23
@@ -56,7 +56,7 @@ extern BLEScan *pBLEScan;
 BLECharacteristic *pTemperatureCharacteristic;
 
 std::list<char*> messaggi_in_arrivo;
-String base_url="http://192.168.172.129:5000/";
+String base_url="http://172.20.10.2:5000/";
 std::list<struct_message*> messages_send;
 
 
@@ -74,9 +74,22 @@ void handle_queaue(){
   memcpy(current, incoming, sizeof(struct_message));
 
   bool ho_inviato_un_message=false;
+  Serial.println("type:"+String(current->type));
+  Serial.println("original_sender:"+String(current->original_sender));
+  Serial.println("dest:"+String(current->dest));
+  Serial.println("source:"+String(current->source));
 
   if (String(current->dest).toInt() == pref.getInt("id")&&
       String(current->source).toInt() == id+1){
+
+    Serial.println("Message for me");
+    Serial.println(current->text);
+    Serial.println(current->type);
+    Serial.println(current->original_sender);
+    Serial.println(current->source);
+    Serial.println(current->dest);
+    Serial.println(current->messageCount);
+
     if(String(current->type)=="ACK"){
       for (std::list<struct_message*>::iterator it = messages_send.begin(); it != messages_send.end(); ++it){
         if(String((*it)->messageCount)==String(current->text)){
@@ -94,6 +107,7 @@ void handle_queaue(){
     else if(String(current->type)=="BraceletData"){
       // io sono il gateway se ricevo dei braceletdata
       // devo inviarli al server
+      Serial.println("invio al server");
       send_string_to_server(String("{\""+ String(current->original_sender) +"\":\""+current->text+"\"}"));
       ho_inviato_un_message=true;
     }
@@ -363,7 +377,7 @@ void setup() {
   
   Serial.println("Messaggio ricevuto");
   SendToServer = false;
-
+  LoRa.disableCrc();
 }
 
 void loop(){

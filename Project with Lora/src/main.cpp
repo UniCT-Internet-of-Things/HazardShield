@@ -91,21 +91,24 @@ void handle_queaue(){
         //quindi lo inoltro a sinistra
         char buffer[sizeof(struct_message)+1];
 
-        struct_message* inoltro;
-
+        struct_message* inoltro=new struct_message;
+        Serial.println("devo inoltrare:");
+        Serial.println("da:"+String(current->source)+"verso"+String(current->dest));
+      
         memset(inoltro,0,sizeof(struct_message));
 
-        memcpy(inoltro->type, current->type, String(current->type).length());
-        String temp_dest(current->dest);
-        memcpy(inoltro->dest, current->dest, String(current->dest).length());
-        memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length());
-        memcpy(inoltro->source, String(id).c_str(), String(id).length());
-        memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length());  
+        memcpy(inoltro->type, current->type, String(current->type).length()+1);
+        memcpy(inoltro->dest, current->dest, String(current->dest).length()+1);
+        memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length()+1);
+        memcpy(inoltro->source, String(id).c_str(), String(id).length()+1);
+        memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length()+1);  
         msgCount++;
         pref.putInt("msgCount",msgCount);
         memcpy(inoltro->touched, "0\0", 2);
-        memcpy(inoltro->text, current->text, String(current->text).length());
+        memcpy(inoltro->text, current->text, String(current->text).length()+1);
         
+        Serial.println("inoltro:"+String(inoltro->source));
+
         messages_send.push_back(inoltro);
 
         memcpy(buffer, inoltro, sizeof(struct_message));
@@ -116,6 +119,7 @@ void handle_queaue(){
           LoRa.write(buffer[i]);
         }
         LoRa.endPacket();
+        delay(500);
         ho_inviato_un_message=true;
       }
 
@@ -125,20 +129,20 @@ void handle_queaue(){
       //lo inoltro a destra
       char buffer[sizeof(struct_message)+1];
 
-      struct_message* inoltro;
+      struct_message* inoltro=new struct_message;
 
       memset(inoltro,0,sizeof(struct_message));
 
-      memcpy(inoltro->type, current->type, String(current->type).length());
+      memcpy(inoltro->type, current->type, String(current->type).length()+1);
       String temp_dest(current->dest);
-      memcpy(inoltro->dest, current->dest, String(current->dest).length());
-      memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length());
-      memcpy(inoltro->source, String(id).c_str(), String(id).length());
-      memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length());  
+      memcpy(inoltro->dest, current->dest, String(current->dest).length()+1);
+      memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length()+1);
+      memcpy(inoltro->source, String(id).c_str(), String(id).length()+1);
+      memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length()+1);  
       msgCount++;
       pref.putInt("msgCount",msgCount);
       memcpy(inoltro->touched, "0\0", 2);
-      memcpy(inoltro->text, current->text, String(current->text).length());
+      memcpy(inoltro->text, current->text, String(current->text).length()+1);
       
       messages_send.push_back(inoltro);
 
@@ -150,6 +154,7 @@ void handle_queaue(){
         LoRa.write(buffer[i]);
       }
       LoRa.endPacket();
+      delay(500);
       ho_inviato_un_message=true;
     }
       
@@ -163,21 +168,22 @@ void handle_queaue(){
       //dire che ho ricevuto il messaggio
 
       Serial.println("Inoltrato messaggio");
-
+      Serial.println("da:"+String(current->source)+"verso"+String(current->dest));
       struct_message ack;
 
       memset(&ack,0,sizeof(struct_message));
 
       memcpy(ack.type, "ACK\0", 4);
-      String temp_dest(current->dest);
-      memcpy(ack.dest, current->source, String(current->source).length());
-      memcpy(ack.original_sender, current->original_sender, String(current->original_sender).length());
-      memcpy(ack.source, temp_dest.c_str(), temp_dest.length());
+      memcpy(ack.dest, current->source, String(current->source).length()+1);
+      memcpy(ack.original_sender, current->original_sender, String(current->original_sender).length()+1);
+      memcpy(ack.source,String(id).c_str(), String(id).length()+1);
       String temp_msgCount = current->messageCount;
-      memcpy(ack.messageCount, String(msgCount).c_str(), String(msgCount).length());  
+      memcpy(ack.messageCount, String(msgCount).c_str(), String(msgCount).length()+1);  
       memcpy(ack.touched, "0\0", 2);
-      memcpy(ack.text, temp_msgCount.c_str(),temp_msgCount.length());
+      memcpy(ack.text, temp_msgCount.c_str(),temp_msgCount.length()+1);
       
+      Serial.println("ack source:"+String(ack.source));
+      Serial.println("current dest"+String(current->dest));
       msgCount++;
       pref.putInt("msgCount",msgCount);
 
@@ -189,6 +195,7 @@ void handle_queaue(){
         LoRa.write(buffer[i]);
       }
       LoRa.endPacket();
+      delay(500);
       Serial.println("ACK sent");
       
     }
@@ -226,7 +233,8 @@ struct_message message;
 JsonDocument MacAddress;
 
 void OnReceive(int packetSize) {
-  if (packetSize == 0) return;          // if there's no packet, return
+  if (packetSize == 0) return; 
+  //Serial.println(packetSize);
   int i=0;                 
   char* incoming = (char*)malloc(packetSize);
   while (LoRa.available()) {            
@@ -288,7 +296,7 @@ void sendBLE(){
     LoRa.write(buffer[i]);
   }
   LoRa.endPacket();
-
+  delay(500);
   Serial.println("Message sent");
   LoRa.receive(); 
   data_ready=false;
@@ -393,6 +401,7 @@ void setup(){
   }
   //ReadBLE.disable();
   Serial.println("ID: "+String(id));
+  //LoRa.disableCrc();
 }
 
 void loop() {

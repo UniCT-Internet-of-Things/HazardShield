@@ -74,6 +74,9 @@ void searchAncore(){
     if(peripheral.haveName()&&String(peripheral.getName().c_str()) =="Ancora"){
 
       pClient->connect(peripheral.getAddress());
+      while(pClient->isConnected()==false){
+        delay(100);
+      }
       BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
       if(pRemoteService==nullptr){
         Serial.println("service not found");
