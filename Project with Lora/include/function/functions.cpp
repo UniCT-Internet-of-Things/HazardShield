@@ -1,6 +1,3 @@
-#ifndef FUNCTIONS_H
-#define FUNCTIONS_H
-
 #include <BLEDevice.h>
 #include <SPI.h>     
 #include <Arduino.h>
@@ -112,6 +109,7 @@ extern Task searchAncore_task;
 extern Preferences pref;
 extern Task ReadBLE;
 extern int id;
+
 void searchAncore(){
   Serial.println("Reading BLEfor ancore");
   
@@ -131,8 +129,12 @@ void searchAncore(){
     if(peripheral.haveName()&&String(peripheral.getName().c_str()) =="Ancora"){
 
       pClient->connect(peripheral.getAddress());
+      while(!pClient->isConnected()){
+        delay(100);
+      }
       BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID);
-      if(pRemoteService==nullptr){
+      while(pRemoteService==nullptr){
+        pRemoteService = pClient->getService(SERVICE_UUID);
         Serial.println("service not found");
         continue;
       }
@@ -181,4 +183,4 @@ typedef struct struct_message {
 } struct_message;
 
 
-#endif
+

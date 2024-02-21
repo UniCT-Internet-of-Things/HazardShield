@@ -386,6 +386,7 @@ void setup(){
     }else{
       Serial.println("non ho ancora settato un altro esp");
       searchAncore_task.enable();
+      ReadBLE.disable();
       
     }
     
