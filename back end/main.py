@@ -60,14 +60,35 @@ def post_data():
 
     return 'Dati ricevuti con successo!'    
     
-
-@app.route('/get_all_names', methods=['GET'])
-def ricevi_dati():
-
+@app.route('/put_worker', methods=['POST'])
+def put_worker():
     print(request)
     #stampa tutta la struttura della richiesta
     print(request.data)
+    user={
+        "nome":request.data["nome"],
+        "cognome":request.data["cognome"],
+        "eta":request.data["eta"],
+        "task":request.data["task"],
+        "info":request.data["info"]
+    }
+    personal=mongo.workers.personal_data
+
+    personal.insert_one(user)
+
     return 'Dati ricevuti con successo!'
+
+@app.route('/get_all_names', methods=['GET'])
+def get_all_names():
+
+    print(request)
+    
+    personal=mongo.workers.personal_data
+
+    cursor = personal.find({})
+
+    return json.dumps(cursor)
+
 
 
 @app.route('/register_ip', methods=['POST'])
