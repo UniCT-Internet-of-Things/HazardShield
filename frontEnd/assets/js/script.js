@@ -1,5 +1,4 @@
 
-
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
@@ -243,9 +242,17 @@ function mapGen(map){
         console.log(map);
         let mapSection = document.createElement('div');
         mapSection.classList.add('mapSection');
-        mapSections[i] = {};
-        mapSections[i]["id"] = i+1;
-        mapSections[i]["section"] = mapSection;
+
+        mapSection.style.height = "0px";
+        
+
+        let mapSectionsItem = {
+            "id" : i+1,
+            "section" : mapSection
+        };
+        mapSections.push(mapSectionsItem);
+
+        
         
 
         let placeholder = document.createElement('div');
@@ -257,10 +264,20 @@ function mapGen(map){
         anchorL.classList.add('anchor');
         anchorL.style.marginLeft = "-5px";
         placeholder.appendChild(anchorL);
+
+        anchorL.style.opacity = "0";
+        
+
         let anchorR = document.createElement('div');
         anchorR.classList.add('anchor');
         anchorR.style.marginRight = "-5px";
         placeholder.appendChild(anchorR);
+
+        anchorR.style.opacity = "0";
+        
+
+        anchors.push(anchorL);
+        anchors.push(anchorR);
 
         if (i == 0){
             anchorL.classList.remove('anchor');
@@ -281,18 +298,69 @@ function mapGen(map){
         });
 
         map.appendChild(mapSection);
-        setTimeout(function(){
             if (i < 10) mapGen(map);
+            else {mapDraw();}
+    }
+
+    
+
+    function mapDraw(){
+        setTimeout(function(){
+            anchors.forEach(function(anchor){
+                anchor.style.opacity = "1";
+            });
+        }, 100);
+
+        setTimeout(function(){ 
+            mapSections.forEach(function(section){
+                section.section.style.height = "100%";
+            }
+            );
         }, 500);
-        
-        
+
     }
 
 
 var mapSections = [];
-
-let firstMap = document.createElement('div');
+var anchors = [];
+/*let firstMap = document.createElement('div');
 firstMap.classList.add('map');
 document.querySelector('.footerCompressed').appendChild(firstMap);
+*/
+console.log(anchors);
 
-mapGen(firstMap);
+
+let confirmMapInfo = document.querySelector('.submitMapInfo');
+var tunnelLen;
+var anchorsNum;
+confirmMapInfo.addEventListener('click', function(){
+    tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
+    anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
+
+    createMap();    
+});
+
+function createMap(){
+
+    document.querySelector('.form').style.opacity = "0";
+    setTimeout(function(){ 
+        document.querySelector('.form').remove();
+        let firstMap = document.createElement('div');
+        firstMap.classList.add('map');
+        document.querySelector('.footerCompressed').appendChild(firstMap);
+        firstMap.style.opacity = "0";
+        setTimeout(function(){
+            firstMap.style.opacity = "1";
+        }, 100);
+        setTimeout(function(){
+            mapGen(firstMap);
+        }, 1000);
+    }, 500);
+   
+
+
+
+
+
+    
+}
