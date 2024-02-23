@@ -163,7 +163,7 @@ confirmNewUser.addEventListener('click', function(){
     let cognome = document.querySelector('input[name = "cognome"]').value;
     let eta = document.querySelector('input[name = "eta"]').value;
     let task = document.querySelector('input[name = "task"]').value;
-    let infos = document.querySelector('input[name = "infoParticolare"]').value;
+    let infos = document.querySelector('input[name = "infoParticolari"]').value;
     putWorker('http://localhost:5000/put_worker',
     {nome: nome, cognome: cognome, eta: eta, task: task, info: infos});
 
@@ -188,7 +188,9 @@ function putWorker(url, data) {
     .catch(error => {
         console.log('Error:', error);
     });
-  }
+}
+
+
 
 
 let interactiveSearch = document.querySelector('.search > input');
@@ -212,3 +214,85 @@ function handleAnchor(){
 
 }
 
+function zoomIntoMap(mapSection){
+    
+    mapSection.style.width = "95vw";
+    document.querySelectorAll('.mapSection').forEach(function(section){
+        if(section != mapSection) section.remove();
+    });
+
+    setTimeout(function(){
+        mapSection.classList.remove('mapSection');
+        document.querySelector('.map').remove();
+        mapSection.classList.add('map');
+        mapSection.innerHTML = "";
+        
+        mapSection.style.width = " ";
+        document.querySelector('.footerCompressed').appendChild(mapSection);
+        i = 0;
+        console.log(mapSection);
+        mapGen(mapSection);
+    }, 1000);
+
+
+}
+var i = 0;
+function mapGen(map){
+
+        console.log("index: " + i)
+        console.log(map);
+        let mapSection = document.createElement('div');
+        mapSection.classList.add('mapSection');
+        mapSections[i] = {};
+        mapSections[i]["id"] = i+1;
+        mapSections[i]["section"] = mapSection;
+        
+
+        let placeholder = document.createElement('div');
+        placeholder.classList.add('doubleAnchor');
+
+        mapSection.appendChild(placeholder);
+
+        let anchorL = document.createElement('div');
+        anchorL.classList.add('anchor');
+        anchorL.style.marginLeft = "-5px";
+        placeholder.appendChild(anchorL);
+        let anchorR = document.createElement('div');
+        anchorR.classList.add('anchor');
+        anchorR.style.marginRight = "-5px";
+        placeholder.appendChild(anchorR);
+
+        if (i == 0){
+            anchorL.classList.remove('anchor');
+            anchorL.classList.add('firstAnchor');
+        }
+        if (i == 9){
+            anchorR.classList.remove('anchor');
+            anchorR.classList.add('lastAnchor');
+        }
+        i++;
+            
+        
+        
+        
+        mapSection.addEventListener('click', function(e){
+            e.stopPropagation();
+            zoomIntoMap(mapSection);
+        });
+
+        map.appendChild(mapSection);
+        setTimeout(function(){
+            if (i < 10) mapGen(map);
+        }, 500);
+        
+        
+    }
+
+
+var mapSections = [];
+
+let firstMap = document.createElement('div');
+firstMap.classList.add('map');
+document.querySelector('.footerCompressed').appendChild(firstMap);
+
+mapGen(firstMap);
