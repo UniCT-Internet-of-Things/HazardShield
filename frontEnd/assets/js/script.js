@@ -68,7 +68,6 @@ function createListItem(nome, cognome){
 createListItem('Mario', 'Rossi');
 createListItem('luigi', 'verdi');
 createListItem('maria', 'bianchi');
-createListItem('dio', 'cane');
     
 
 
@@ -162,12 +161,34 @@ confirmNewUser.addEventListener('click', function(){
 
     let nome = document.querySelector('input[name = "nome"]').value;
     let cognome = document.querySelector('input[name = "cognome"]').value;
+    let eta = document.querySelector('input[name = "eta"]').value;
+    let task = document.querySelector('input[name = "task"]').value;
+    let infos = document.querySelector('input[name = "infoParticolare"]').value;
+    putWorker('http://localhost:5000/put_worker',
+    {nome: nome, cognome: cognome, eta: eta, task: task, info: infos});
 
+
+    
 
     createListItem(nome, cognome);
 });
 
-
+function putWorker(url, data) {
+    fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(data),
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('Success:', data);
+    })
+    .catch(error => {
+        console.log('Error:', error);
+    });
+  }
 
 
 let interactiveSearch = document.querySelector('.search > input');
@@ -185,5 +206,9 @@ interactiveSearch.addEventListener('input', function(){
 
 function search(){
     
+}
+
+function handleAnchor(){
+
 }
 
