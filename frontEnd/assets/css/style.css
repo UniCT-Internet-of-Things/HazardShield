@@ -380,11 +380,12 @@ body{
     background-color: #232323;
     border-top: 1px solid #555;
     align-items: center;
-    justify-content: space-around;
+    justify-content: end;
     flex-direction: column;
-
+    margin-bottom: 20px;
     position: absolute;
     bottom: 0px;
+    gap: 30px;
     transition: height 1s ease-in-out;
     
 }
@@ -447,9 +448,33 @@ body{
     z-index: 100;
 }
 
+.tunnelLenghtVisualizer{
+    height: 3px;
+    width: 95vw;
+    border-bottom: 3px solid #555;
+    border-radius: 5px;
+    display: flex;
+    
+}
+.segment{
+    height: 25px;
+    width: 100%;
+    border-right: 1px solid #555;
+    transition: all 0.5s ease-in-out;
+    position: relative;
+    margin-top: -10px;
+}
+.segment:last-child{
+    height: 25px;
+    width: 100%;
+    border: none;
+    transition: all 0.5s ease-in-out;
+    position: relative;
+    margin-top: -10px;
+}
 
 .map{
-    height: 95% !important;
+    height: 75% !important;
     width: 95vw;
     border-radius: 15px;
     background-color: #333333;
@@ -757,9 +782,8 @@ body{
     align-items: center;
     justify-content: space-evenly;
     flex-direction: row;
-    width: 600px;
+    width: 90vw;
     height: 300px;
-    
 }
 
 .form > div > div{
@@ -768,7 +792,7 @@ body{
     justify-content: space-evenly;
     flex-direction: column;
     height: 150px;
-    
+    width: 50%;
 }
 
 .form > div > div > input{
@@ -787,14 +811,77 @@ body{
     border-radius: 15px;
     border: none;
     outline: none;
-    background-color: rgba(0, 98, 255, 0.8);
+    background-color: rgba(255, 0, 115, 0.8);
     color: white;
     font-size: calc(12px + 1vh);
     padding: 10px;
     width: 70px;
-    height: 50px !important;
+    height: 40px !important;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.5s ease-in-out;
 }
 
 
+
+.anchorMin{
+    height: 40px;
+    width: 50%;
+    padding: 10px;
+    border-radius: 15px;
+    transition: all 0.5s ease-in-out;
+    font-size: calc(12px + 1vh);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.anchorMin::after{
+    content: "N. minimo ancore";
+    font-size: calc(4px + 1vh);
+    text-wrap: wrap;
+    position: relative;
+    left: 10px;
+}
+
+.anchorDistance{
+    height: 40px;
+    width: 50%;
+    padding: 10px;
+    border-radius: 15px;
+    transition: all 0.5s ease-in-out;
+    font-size: calc(12px + 1vh);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.anchorDistance:after{
+    content: "Distanza ancore (max: 8m)";
+    font-size: calc(3px + 1vh);
+    text-wrap: wrap;
+    position: relative;
+    left: 10px;
+}
+
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(0px, 0px) rotate(0deg); } 
+}
+
+.shake{
+    animation: shake 0.5s;
+    animation-fill-mode: forwards;
+}
 

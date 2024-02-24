@@ -236,8 +236,8 @@ function zoomIntoMap(mapSection){
 
 }
 var i = 0;
-function mapGen(map){
-
+function mapGen(map, anchorDist){
+    console.log("anchorDist: " + anchorDist)
         console.log("index: " + i)
         console.log(map);
         let mapSection = document.createElement('div');
@@ -283,7 +283,7 @@ function mapGen(map){
             anchorL.classList.remove('anchor');
             anchorL.classList.add('firstAnchor');
         }
-        if (i == 9){
+        if (i == anchorDistance - 1){
             anchorR.classList.remove('anchor');
             anchorR.classList.add('lastAnchor');
         }
@@ -298,7 +298,7 @@ function mapGen(map){
         });
 
         map.appendChild(mapSection);
-            if (i < 10) mapGen(map);
+            if (i < anchorDist) mapGen(map, anchorDist);
             else {mapDraw();}
     }
 
@@ -333,18 +333,78 @@ console.log(anchors);
 let confirmMapInfo = document.querySelector('.submitMapInfo');
 var tunnelLen;
 var anchorsNum;
+
+var minAnchorNum;
+var anchorDistance;
+
+document.querySelector('input[name = "tunnelLen"]').addEventListener('keyup', function(){
+    tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
+    minAnchorNum =  Math.ceil(tunnelLen / 8) + 1;
+    console.log(minAnchorNum);  
+    document.querySelector(".anchorMin").innerHTML = minAnchorNum;
+    let dist = Math.ceil(tunnelLen / (minAnchorNum)) + 1;
+    if (dist > 8) dist = 8;
+    document.querySelector(".anchorDistance").innerHTML = dist;
+
+    document.querySelector('input[name = "anchorsNum"]').value = minAnchorNum;
+    document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(0, 98, 255, 0.8)";
+});
+
+document.querySelector('input[name = "anchorsNum"]').addEventListener('keyup', function(e){
+    anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
+    anchorDistance = Math.ceil(tunnelLen / anchorsNum);
+    
+        console.log(anchorDistance);
+        document.querySelector(".anchorDistance").innerHTML = anchorDistance;
+        if (anchorDistance > 8  || anchorsNum < minAnchorNum) {
+            document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(255, 0, 115, 0.8)";
+        }
+        else {
+            document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(0, 98, 255, 0.8)";
+        }
+        //background-color: rgba(0, 98, 255, 0.8);
+        //background-color: rgba(255, 0, 115, 0.8);
+    });
+
 confirmMapInfo.addEventListener('click', function(){
     tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
+    let anchorDist = Math.ceil(tunnelLen / anchorsNum);
 
-    createMap();    
+    if (confirmMapInfo.style.backgroundColor == "rgba(255, 0, 115, 0.8)"){
+        confirmMapInfo.classList.add('shake');
+        setTimeout(function(){
+            confirmMapInfo.classList.remove('shake');
+        }, 500);
+    }
+    else if (tunnelLen == "" || anchorsNum == ""){
+        confirmMapInfo.classList.add('shake');
+        setTimeout(function(){
+            confirmMapInfo.classList.remove('shake');
+        }, 500);
+    }
+    else{
+        createMap(anchorDist); 
+    }
+       
 });
 
-function createMap(){
+function createMap(anchorDist){
 
     document.querySelector('.form').style.opacity = "0";
     setTimeout(function(){ 
         document.querySelector('.form').remove();
+
+        let tunnelLenghtVisualizer = document.createElement('div');
+        tunnelLenghtVisualizer.classList.add('tunnelLenghtVisualizer');
+        document.querySelector('.footerCompressed').appendChild(tunnelLenghtVisualizer);
+
+        for (let i = 0; i <= anchorDist; i++){
+            let segment = document.createElement('div');
+            segment.classList.add('segment');
+            tunnelLenghtVisualizer.appendChild(segment);
+        }
+
         let firstMap = document.createElement('div');
         firstMap.classList.add('map');
         document.querySelector('.footerCompressed').appendChild(firstMap);
@@ -353,7 +413,7 @@ function createMap(){
             firstMap.style.opacity = "1";
         }, 100);
         setTimeout(function(){
-            mapGen(firstMap);
+            mapGen(firstMap, anchorDist);
         }, 1000);
     }, 500);
    
