@@ -236,7 +236,7 @@ function zoomIntoMap(mapSection){
 
 }
 var i = 0;
-function mapGen(map, anchorDist){
+function mapGen(map, anchorDist, segLen){
     console.log("anchorDist: " + anchorDist)
         console.log("index: " + i)
         console.log(map);
@@ -244,6 +244,8 @@ function mapGen(map, anchorDist){
         mapSection.classList.add('mapSection');
 
         mapSection.style.height = "0px";
+
+        if (segLen > 8) mapSection.classList.add('hoverable');
         
 
         let mapSectionsItem = {
@@ -291,14 +293,15 @@ function mapGen(map, anchorDist){
             
         
         
-        
-        mapSection.addEventListener('click', function(e){
-            e.stopPropagation();
-            zoomIntoMap(mapSection);
-        });
+        if (segLen > 8) {
+            mapSection.addEventListener('click', function(e){
+                e.stopPropagation();
+                zoomIntoMap(mapSection);
+            });
+        }
 
         map.appendChild(mapSection);
-            if (i < anchorDist) mapGen(map, anchorDist);
+            if (i < anchorDist) mapGen(map, anchorDist, segLen);
             else {mapDraw();}
     }
 
@@ -339,14 +342,24 @@ var anchorDistance;
 
 document.querySelector('input[name = "tunnelLen"]').addEventListener('keyup', function(){
     tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
-    minAnchorNum =  Math.ceil(tunnelLen / 8) + 1;
-    console.log(minAnchorNum);  
-    document.querySelector(".anchorMin").innerHTML = minAnchorNum;
-    let dist = Math.ceil(tunnelLen / (minAnchorNum)) + 1;
+    if (tunnelLen == 0 || tunnelLen == "") minAnchorNum = "";
+    
+    minAnchorNum =  Math.ceil(tunnelLen / 8);
+    //console.log(minAnchorNum);  
+    if (tunnelLen <= 8) {
+        document.querySelector(".anchorMin").innerHTML = 1;
+        document.querySelector('input[name = "anchorsNum"]').value = 1;
+    }
+    else {
+        minAnchorNum--;
+        console.log(minAnchorNum);
+        document.querySelector(".anchorMin").innerHTML = minAnchorNum;
+        document.querySelector('input[name = "anchorsNum"]').value = minAnchorNum;
+    }
+
+    let dist = Math.ceil(tunnelLen / (minAnchorNum+1));
     if (dist > 8) dist = 8;
     document.querySelector(".anchorDistance").innerHTML = dist;
-
-    document.querySelector('input[name = "anchorsNum"]').value = minAnchorNum;
     document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(0, 98, 255, 0.8)";
 });
 
@@ -384,14 +397,30 @@ confirmMapInfo.addEventListener('click', function(){
         }, 500);
     }
     else{
-        createMap(anchorDist); 
+        console.log("anchrosNum: " + anchorsNum);
+        console.log("tunnelLen: " + tunnelLen);
+
+        let segNum = anchorsNum;
+        segNum++;
+        anchorDist = Math.ceil(tunnelLen / (segNum)); //2
+
+        console.log("anchorDist: " + anchorDist);
+        console.log("segnum: " + segNum);
+
+        if (segNum > 8){
+            createMap(8, segNum);
+        }
+        else {
+            createMap(segNum, anchorDist); 
+        }
     }
        
 });
 
-function createMap(anchorDist){
+function createMap(segNum, segLen){
 
     document.querySelector('.form').style.opacity = "0";
+
     setTimeout(function(){ 
         document.querySelector('.form').remove();
 
@@ -399,10 +428,40 @@ function createMap(anchorDist){
         tunnelLenghtVisualizer.classList.add('tunnelLenghtVisualizer');
         document.querySelector('.footerCompressed').appendChild(tunnelLenghtVisualizer);
 
-        for (let i = 0; i <= anchorDist; i++){
+        for (let i = 0; i < segNum; i++){
             let segment = document.createElement('div');
             segment.classList.add('segment');
+            
+            let anchorDisplayL = document.createElement('div');
+            anchorDisplayL.classList.add('anchorDisplay');
+            let meters = Math.ceil(segLen * i);
+            if (meters >= 1000) meters = meters / 1000 + "km";
+            else meters += "m";
+            anchorDisplayL.innerHTML = meters;
+
+
+
+            segment.appendChild(anchorDisplayL);
+
+            if ( i == segNum - 1){ 
+                let anchorDisplayR = document.createElement('div');
+                anchorDisplayR.classList.add('anchorDisplay');
+                console.log("segmentLen: " + segLen);
+                
+                if (tunnelLen >= 1000) tunnelLen = tunnelLen / 1000 + "km";
+                else tunnelLen += "m";
+                anchorDisplayR.innerHTML = tunnelLen;
+                anchorDisplayR.style.marginRight = "-20px";
+                segment.appendChild(anchorDisplayR);
+            }
+            
+            
+
             tunnelLenghtVisualizer.appendChild(segment);
+            let zoom = document.querySelector('.zoom');
+            zoom.style.opacity = "1";
+            let segLenDisplay = document.querySelector('.segLen');
+            segLenDisplay.innerHTML = segLen + "m";
         }
 
         let firstMap = document.createElement('div');
@@ -413,7 +472,7 @@ function createMap(anchorDist){
             firstMap.style.opacity = "1";
         }, 100);
         setTimeout(function(){
-            mapGen(firstMap, anchorDist);
+            mapGen(firstMap, segNum, segLen);
         }, 1000);
     }, 500);
    
@@ -424,3 +483,26 @@ function createMap(anchorDist){
 
     
 }
+
+
+
+/*
+Anum >= minAnum => Adist <= 8
+
+ceil(Tlen / Anum) = Adist
+
+ceil(Tlen / Adist) = mapSegLen
+
+ceil(mapSegLen / Adist) = Ancheron to display
+
+
+Tlen = 1000m
+Anum = 139
+
+Adist = 1000 / 139 = 7.19 => 8
+mapSegLen  = 1000 / 8 = 125
+
+Ancheron to display = 125 / 8 = 15.625 => 16
+
+
+*/

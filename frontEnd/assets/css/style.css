@@ -453,16 +453,27 @@ body{
     width: 95vw;
     border-bottom: 3px solid #555;
     border-radius: 5px;
+    margin-bottom: -5px;
+    
     display: flex;
     
 }
 .segment{
-    height: 25px;
+    height: 15px;
     width: 100%;
-    border-right: 1px solid #555;
+    border-right: 2px solid #777;
     transition: all 0.5s ease-in-out;
     position: relative;
-    margin-top: -10px;
+    margin-top: -5px;
+
+    display: flex;
+    justify-content: space-between;
+}
+
+.anchorDisplay{
+    font-size: calc(8px + 1vh);
+    margin-top: -25px;
+    margin-left: -20px;
 }
 .segment:last-child{
     height: 25px;
@@ -470,11 +481,11 @@ body{
     border: none;
     transition: all 0.5s ease-in-out;
     position: relative;
-    margin-top: -10px;
+    margin-top: -5px;
 }
 
 .map{
-    height: 75% !important;
+    height: 65% !important;
     width: 95vw;
     border-radius: 15px;
     background-color: #333333;
@@ -489,35 +500,38 @@ body{
 
 .mapSection{
     height: 100%;
-    width: 10%;
+    width: 100%;
     border-right: 1px solid #555;
-    cursor: pointer;
     scale: 1;
     transition: all 0.5s ease-in-out;
 }
 
 .mapSection:last-child{
     height: 100%;
-    width: 10%;
+    width: 100%;
     border-right: none;
 }
 
-.mapSection:hover{
+/* .mapSection:hover{
     background-color: #555;
     transition: all 0.2s ease-in-out;
+} */
 
-}
 
-.mapSection:first-child:hover{
+
+
+.hoverable:first-child:hover{
     background-color: #555;
     border-top-left-radius: 15px;
     border-bottom-left-radius: 15px;
+    cursor: pointer;
 }
 
-.mapSection:last-child:hover{
+.hoverable:last-child:hover{
     background-color: #555;
     border-top-right-radius: 15px;
     border-bottom-right-radius: 15px;
+    cursor: pointer;
 }
 
 .firstAnchor{
@@ -865,6 +879,66 @@ body{
     position: relative;
     left: 10px;
 }
+
+.zoom{
+    height: 30px;
+    width: 70px;
+    border: 1px solid #777;
+    border-radius: 25px;
+    position: absolute;
+    top: 15px;
+    left: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+    opacity: 0;
+    transition: all 0.5s ease-in-out;
+}
+
+.segLen{
+    height: 30px;
+    width: 70px;
+    position: absolute;
+    top: 0px;
+    left: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    font-size: calc(10px + 1vh);
+}
+
+.zoomIn{
+    height: 100%;
+    width: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-left-radius: 20px;
+    border-bottom-left-radius: 20px;
+    padding: 6px;
+    opacity: 0.5;
+}
+
+.hoverable{
+    cursor: pointer;
+}
+
+.hoverable:hover{
+    background-color: #555;
+}
+
+.zoomOut{
+    height: 100%;
+    width: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-top-right-radius: 20px;
+    border-bottom-right-radius: 20px;
+    padding: 8px;
+    opacity: 0.5;
+}
+
 
 @keyframes shake {
     0% { transform: translate(1px, 1px) rotate(0deg); }
