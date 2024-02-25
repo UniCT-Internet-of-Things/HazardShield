@@ -213,28 +213,25 @@ function handleAnchor(){
 
 }
 
-function zoomIntoMap(mapSection){
-    
-    mapSection.style.width = "95vw";
+function zoomIntoMap(mapSection, anchorDist, segLen){
+    mapSection.classList.toggle('mapSection');
+    mapSection.classList.toggle('mapSectionTemp');
     document.querySelectorAll('.mapSection').forEach(function(section){
         if(section != mapSection) section.remove();
     });
-
     setTimeout(function(){
-        mapSection.classList.remove('mapSection');
-        document.querySelector('.map').remove();
-        mapSection.classList.add('map');
-        mapSection.innerHTML = "";
-        
-        mapSection.style.width = " ";
-        document.querySelector('.footerCompressed').appendChild(mapSection);
-        i = 0;
-        console.log(mapSection);
-        mapGen(mapSection);
-    }, 1000);
-
-
+        mapSection.classList.toggle('mapSectionTemp');
+        mapSection.classList.toggle('mapSection');
+        setTimeout(function(){
+            document.querySelector('.mapSection').remove();
+            i = 0;
+            console.log("anchorDist: " + anchorDist);
+            console.log("segLen: " + segLen);
+            mapGen(map, 1, segLen);
+        }, 5000);
+    }, 500);
 }
+
 var i = 0;
 function mapGen(map, anchorDist, segLen){
     console.log("anchorDist: " + anchorDist)
@@ -244,8 +241,9 @@ function mapGen(map, anchorDist, segLen){
         mapSection.classList.add('mapSection');
 
         mapSection.style.height = "0px";
-
-        if (segLen > 8) mapSection.classList.add('hoverable');
+        //tunnelLen -= "m"; 
+        console.log("TLEN: " + tunnelLen);   
+        if (tunnelLen >= 64) mapSection.classList.add('hoverable');
         
 
         let mapSectionsItem = {
@@ -293,10 +291,11 @@ function mapGen(map, anchorDist, segLen){
             
         
         
-        if (segLen > 8) {
+        if (tunnelLen >= 64) {
+            console.log("hoverable")
             mapSection.addEventListener('click', function(e){
                 e.stopPropagation();
-                zoomIntoMap(mapSection);
+                zoomIntoMap(mapSection, anchorDist, segLen);
             });
         }
 
@@ -447,10 +446,10 @@ function createMap(segNum, segLen){
                 let anchorDisplayR = document.createElement('div');
                 anchorDisplayR.classList.add('anchorDisplay');
                 console.log("segmentLen: " + segLen);
-                
-                if (tunnelLen >= 1000) tunnelLen = tunnelLen / 1000 + "km";
-                else tunnelLen += "m";
-                anchorDisplayR.innerHTML = tunnelLen;
+                let Tlen = 0;
+                if (tunnelLen >= 1000) Tlen = tunnelLen / 1000 + "km";
+                else Tlen = tunnelLen + "m";
+                anchorDisplayR.innerHTML = Tlen;
                 anchorDisplayR.style.marginRight = "-20px";
                 segment.appendChild(anchorDisplayR);
             }

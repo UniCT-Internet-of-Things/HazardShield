@@ -498,6 +498,7 @@ body{
 }
 
 
+
 .mapSection{
     height: 100%;
     width: 100%;
@@ -505,6 +506,15 @@ body{
     scale: 1;
     transition: all 0.5s ease-in-out;
 }
+
+.mapSectionTemp{
+    height: 100%;
+    width: calc(100% / 8);
+    border: 1px solid #555;
+    border-radius: 15px;
+    scale: 1;
+}
+
 
 .mapSection:last-child{
     height: 100%;
