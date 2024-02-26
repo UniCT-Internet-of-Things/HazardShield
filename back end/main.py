@@ -43,11 +43,14 @@ def ricevi_dati():
     print(request.data)
     return 'Dati ricevuti con successo!'
 
-@sock.route('/')
-def get_all(websocket):
-    global ws
-    ws=websocket
-    sock.send('Hello, world!') 
+@sock.route('/get_all')
+def echo(websocket):
+    
+    while True:
+        global ws
+        ws=websocket
+        data = ws.receive()
+        print(data)
 
 @app.route('/post_data', methods=['POST'])
 def post_data():
