@@ -220,7 +220,7 @@ var multiplier = 0;
 function zoomIntoMap(mapSection, anchorDist, segLen){
     mapSection.classList.toggle('mapSection');
     mapSection.classList.toggle('mapSectionTemp');
-    multiplier = 0;
+    multiplier = mapSection.classList[0];
     console.log("mapSection: " + mapSection.classList[0]);
     document.querySelectorAll('.mapSection').forEach(function(section){
         if(section != mapSection) section.remove();
@@ -241,23 +241,29 @@ function zoomIntoMap(mapSection, anchorDist, segLen){
                 console.log("aiuto");
                 zoomedTunnelLen = actualSegLen;
                 console.log("anchorsNum: " + anchorsNum);
+                
                 anchorsNum = (Number(anchorsNum) + 1)  / 8;
                 console.log("anchorsNum: " + anchorsNum);
-                if (Number(anchorsNum) + 1 > 8) createMap(8, zoomedTunnelLen/8, zoomedTunnelLen);
-                else createMap(Math.floor(anchorsNum), Math.floor(zoomedTunnelLen/anchorsNum), zoomedTunnelLen);
+                console.log(Number(zoomedTunnelLen) * (Number(multiplier)+1))
+                if (Number(anchorsNum) + 1 > 8) createMap(8, zoomedTunnelLen/8, Number(zoomedTunnelLen) * (Number(multiplier)));
+                else createMap(Math.floor(anchorsNum), zoomedTunnelLen/anchorsNum, Number(zoomedTunnelLen) * (Number(multiplier)));
             
         }, 1000);
     }, 500);
 }
 
 var i = 0;
+var sens = 0;
 function mapGen(map, anchorDist, segLen){
     console.log("anchorDist: " + anchorDist)
         console.log("index: " + i)
         console.log(map);
         let mapSection = document.createElement('div');
         mapSection.classList.add('mapSection');
-        mapSection.classList.add(i+1);
+       
+        console.log("sens: " + i* sens);
+        
+        mapSection.classList.add(i * ((Number(anchorsNum) + 1) / 8));
          
 
         mapSection.style.height = "0px";
@@ -406,7 +412,8 @@ confirmMapInfo.addEventListener('click', function(){
     tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
     let anchorDist = Math.ceil(tunnelLen / anchorsNum);
-
+    sens = Number(tunnelLen) / (Number(anchorsNum) + 1);
+    console.log("sens: " + sens);
     if (confirmMapInfo.style.backgroundColor == "rgba(255, 0, 115, 0.8)"){
         confirmMapInfo.classList.add('shake');
         setTimeout(function(){
@@ -441,7 +448,7 @@ confirmMapInfo.addEventListener('click', function(){
 });
 
 function createMap(segNum, segLen, tunnelLen){
-
+    
     if (document.querySelector('.form') != null)
         document.querySelector('.form').style.opacity = "0";
 
@@ -463,8 +470,12 @@ function createMap(segNum, segLen, tunnelLen){
             
             let anchorDisplayL = document.createElement('div');
             anchorDisplayL.classList.add('anchorDisplay');
-            let meters = segLen * (i + multiplier);
-            meters = meters.toPrecision(2);
+            console.log("multiplier: " + multiplier);
+            console.log("i: " + i);
+            console.log("segLen: " + segLen);
+            let meters = Number(segLen) * (Number(i) + (Number(multiplier)));
+
+            meters = meters.toPrecision(3);
             if (meters >= 1000) meters = meters / 1000 + "km";
             else meters += "m";
             anchorDisplayL.innerHTML = meters;
@@ -477,9 +488,11 @@ function createMap(segNum, segLen, tunnelLen){
                 let anchorDisplayR = document.createElement('div');
                 anchorDisplayR.classList.add('anchorDisplay');
                 console.log("segmentLen: " + segLen);
-                let Tlen = 0;
+                console.log("allSections: " + document.querySelector('.map'));
+                let Tlen = Number(meters.split("m")[0]) + Number(segLen);
+                Tlen = Tlen.toPrecision(3);
                 if (tunnelLen >= 1000) Tlen = tunnelLen / 1000 + "km";
-                else Tlen = tunnelLen + "m";
+                else Tlen = Tlen + "m";
                 anchorDisplayR.innerHTML = Tlen;
                 anchorDisplayR.style.marginRight = "-20px";
                 segment.appendChild(anchorDisplayR);
