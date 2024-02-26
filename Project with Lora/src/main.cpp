@@ -19,7 +19,8 @@
 
 int id=0;
 bool ho_settato_un_altro_esp=false;
-int msgCount = 0;            
+int msgCount = 0;     
+String msg_to_bracelet = "0";      
 
 Preferences pref;
 bool data_ready=false;
@@ -74,6 +75,7 @@ void handle_queaue(){
     else if(String(current->type)=="MSG_to_bracelet"){
       //scrivere come inviare un messaggio per i braccialetti
       //e gestire l'inoltro del messaggio se non conosco il destinatario
+      msg_to_bracelet="1";
     }
     else if(String(current->type)=="BraceletData"){
       // io sono il gateway se ricevo dei braceletdata
@@ -335,6 +337,13 @@ void readBLE(){
       }
 
       String dead = read_BLE_charcteristic(pRemoteService1, DEAD_CHARACTERISTIC_UUID);
+      BLERemoteCharacteristic* pRunCharacteristic = pRemoteService1->getCharacteristic(RUN_CHARACTERISTIC_UUID);
+      if (pRunCharacteristic == nullptr) {
+        Serial.println("Failed to find run characteristic UUID");
+      }
+      else{
+        pRunCharacteristic->writeValue(msg_to_bracelet.c_str());
+      }
 
       char buffer[100];
       snprintf(buffer, sizeof(buffer), "{%s,%s,%s,%s,%s,%s}", 
