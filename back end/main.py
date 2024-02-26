@@ -1,6 +1,6 @@
 from flask import Flask, render_template, url_for, request, redirect, send_from_directory, session, make_response
 import pymongo as PyMongo
-from flask_socketio import SocketIO, emit
+from flask_sock import Sock
 import json
 import time
 import requests
@@ -12,9 +12,7 @@ app = Flask(__name__,
             static_folder=frontend_folder+'_app',
             template_folder=frontend_folder,
             )
-
-async_mode = None
-socketio = SocketIO(app, async_mode=async_mode)
+sock = Sock(app)
 global gateway_ip
 gateway_ip=""
 
@@ -23,10 +21,15 @@ CORS(app)
 
 mongo = PyMongo.MongoClient('localhost:27017', 27017)
 
+global ws
+ws=None
 def send_request():
+
     while True:
-        socketio.emit('my_response',
-                      {'data': 'Bitcoin current price (USD):'})
+        global ws
+        if(ws is not None):
+            print("sending request")
+            ws.send('Hello, world!')
         time.sleep(20)
 
 thread = threading.Thread(target=send_request)
@@ -39,6 +42,11 @@ def ricevi_dati():
     print(request.data)
     return 'Dati ricevuti con successo!'
 
+@sock.route('/get_all')
+def echo(websocket):
+    global ws
+    ws=websocket
+    sock.send('Hello, world!') 
 
 @app.route('/post_data', methods=['POST'])
 def post_data():
