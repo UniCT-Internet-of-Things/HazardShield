@@ -163,7 +163,7 @@ confirmNewUser.addEventListener('click', function(){
     let cognome = document.querySelector('input[name = "cognome"]').value;
     let eta = document.querySelector('input[name = "eta"]').value;
     let task = document.querySelector('input[name = "task"]').value;
-    let infos = document.querySelector('input[name = "infoParticolare"]').value;
+    let infos = document.querySelector('input[name = "info"]').value;
     putWorker('http://localhost:5000/put_worker',
     {nome: nome, cognome: cognome, eta: eta, task: task, info: infos});
 

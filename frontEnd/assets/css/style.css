@@ -466,6 +466,16 @@ body{
     width: 10%;
     border: 1px solid green;
 }
+.mapSection:hover{
+    background-color: #555;
+}
+
+.firstAnchor{
+    height: 25px;
+    width: 25px;
+    border-radius: 100%;
+    background-color: green;
+}
 
 
 

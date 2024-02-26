@@ -1,30 +1,30 @@
 from flask import Flask, render_template, url_for, request, redirect, send_from_directory, session, make_response
 import pymongo as PyMongo
+from flask_sock import Sock
 import json
 import time
 import requests
 import threading
+from flask_cors import CORS
 
 frontend_folder = './build/'
 app = Flask(__name__,
             static_folder=frontend_folder+'_app',
             template_folder=frontend_folder,
             )
+sock = Sock(app)
 global gateway_ip
 gateway_ip=""
 
+CORS(app)
 #create a thread
 
 mongo = PyMongo.MongoClient('localhost:27017', 27017)
 
 def send_request():
     while True:
-        #send request to the gateway
-        if gateway_ip != "":    
-            print("Sending request to the gateway")
-            response = requests.post("http://"+gateway_ip+":80/receive_data", data = {'datas': 'data', 'values': {"test":"2","test2":"4"}})   
-            print(response)
-            time.sleep(10000)
+        sock.send("new data")
+        time.sleep(20)
 
 thread = threading.Thread(target=send_request)
 
@@ -35,6 +35,10 @@ def ricevi_dati():
     #stampa tutta la struttura della richiesta
     print(request.data)
     return 'Dati ricevuti con successo!'
+
+@sock.route('/get_all')
+def echo(sock):
+    sock.send('Hello, world!') 
 
 @app.route('/post_data', methods=['POST'])
 def post_data():
@@ -49,14 +53,18 @@ def post_data():
     data = json.loads(data)
     print(data)
     Worker=mongo.workers.data
-    data_to_insert={}
+    
 
     for key in data:
-        data_to_insert["mac_dispositivo"]=key
-        data_to_insert["timestamp"]=time.time()
-        data_to_insert["sensor_data"]=data[key]
+        data_to_insert={}
+        for key2 in data[key]:
 
-        Worker.insert_one(data_to_insert)
+            data_to_insert["mac_dispositivo"]=key2
+            data_to_insert["timestamp"]=time.time()
+            data_to_insert["sensor_data"]=data[key][key2]
+            data_to_insert["sensor_id"]=key
+
+            Worker.insert_one(data_to_insert)
 
     return 'Dati ricevuti con successo!'    
     
@@ -65,12 +73,16 @@ def put_worker():
     print(request)
     #stampa tutta la struttura della richiesta
     print(request.data)
+    data = request.data.decode('utf-8')
+    print(data)
+    #convert data from string to dictionary
+    data = json.loads(data)
     user={
-        "nome":request.data["nome"],
-        "cognome":request.data["cognome"],
-        "eta":request.data["eta"],
-        "task":request.data["task"],
-        "info":request.data["info"]
+        "nome":data["nome"],
+        "cognome":data["cognome"],
+        "eta":data["eta"],
+        "task":data["task"],
+        "info":data["info"]
     }
     personal=mongo.workers.personal_data
 
@@ -86,8 +98,15 @@ def get_all_names():
     personal=mongo.workers.personal_data
 
     cursor = personal.find({})
+    ritorno={}
+    i=0
+    for document in cursor:
+        del document["_id"]
+        print(document)
+        ritorno[i]=document
+        i+=1
 
-    return json.dumps(cursor)
+    return ritorno
 
 
 
