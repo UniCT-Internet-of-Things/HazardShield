@@ -83,7 +83,10 @@ function createDashboardItem(){
 
 let extender = document.querySelector('.extenderUp');
 let main = document.querySelector('.mainVisible');
-let footer = document.querySelector('.footerCompressed');
+let footer;
+if (document.querySelector('.footerCompressed') != null)
+ footer = document.querySelector('.footerCompressed');
+else footer = document.querySelector('.footerExtended');
 let map = document.querySelector('.mapCompressed');
 
 extender.addEventListener('click', function(){
@@ -251,6 +254,8 @@ function mapGen(map, anchorDist, segLen){
         console.log(map);
         let mapSection = document.createElement('div');
         mapSection.classList.add('mapSection');
+        mapSection.classList.add(i+1);
+         
 
         mapSection.style.height = "0px";
         //tunnelLen -= "m"; 
@@ -446,7 +451,8 @@ function createMap(segNum, segLen, tunnelLen){
         }
         let tunnelLenghtVisualizer = document.createElement('div');
         tunnelLenghtVisualizer.classList.add('tunnelLenghtVisualizer');
-        document.querySelector('.footerCompressed').appendChild(tunnelLenghtVisualizer);
+        document.querySelector('.footerCompressed')?.appendChild(tunnelLenghtVisualizer);
+        document.querySelector('.footerExtended')?.appendChild(tunnelLenghtVisualizer);
 
         for (let i = 0; i < segNum; i++){
             let segment = document.createElement('div');
@@ -487,7 +493,8 @@ function createMap(segNum, segLen, tunnelLen){
 
         let firstMap = document.createElement('div');
         firstMap.classList.add('map');
-        document.querySelector('.footerCompressed').appendChild(firstMap);
+        document.querySelector('.footerCompressed')?.appendChild(firstMap);
+        document.querySelector('.footerExtended')?.appendChild(firstMap);
         firstMap.style.opacity = "0";
         setTimeout(function(){
             firstMap.style.opacity = "1";
@@ -527,3 +534,36 @@ Ancheron to display = 125 / 8 = 15.625 => 16
 
 
 */
+
+const socket = new WebSocket('ws://127.0.0.1:5000');
+
+socket.onopen = function(e) {
+    console.log("[open] Connection established");
+};
+
+socket.onmessage = function(event) {
+    console.log(`[message] Data received from server: ${event.data}`);
+};
+/*
+Anum >= minAnum => Adist <= 8
+
+ceil(Tlen / Anum) = Adist
+
+ceil(Tlen / Adist) = mapSegLen
+
+ceil(mapSegLen / Adist) = Ancheron to display
+
+
+Tlen = 1000m
+Anum = 139
+
+Adist = 1000 / 139 = 7.19 => 8
+mapSegLen  = 1000 / 8 = 125
+
+Ancheron to display = 125 / 8 = 15.625 => 16
+
+
+*/
+
+
+
