@@ -200,7 +200,7 @@ body{
 
 .listItem{
     background-color: #333333;
-    width: 10vw;
+    width: calc(110px + 5vw);
     height: calc(80px + 5vh);
     border-radius: 15px;
     min-width: 150px;
@@ -485,7 +485,7 @@ body{
 }
 
 .map{
-    height: 65% !important;
+    height: 17vh !important;
     width: 95vw;
     border-radius: 15px;
     background-color: #333333;
@@ -514,9 +514,7 @@ body{
     border-radius: 15px;
     scale: 1;
 }
-.mapSection:hover{
-    background-color: #555;
-}
+
 
 .firstAnchor{
     height: 25px;
