@@ -249,8 +249,6 @@ extern bool AncoraFound;
 extern BLEScan *pBLEScan;
 
 
-BLECharacteristic *pTemperatureCharacteristic;
-
 uint8_t remote_mac_next[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 uint8_t remote_mac_prec[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -320,17 +318,27 @@ void readBLE(){
       pClient->connect(peripheral.getAddress());
       BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID_bracelet);
       if(pRemoteService==nullptr){
-        Serial.println("service not found");
+        Serial.println("service 1 not found");
         continue;
       }
 
       String temperature=read_BLE_charcteristic(pRemoteService, TEMPERATURE_CHARACTERISTIC_UUID);
       String saturation=read_BLE_charcteristic(pRemoteService, SATURATION_CHARACTERISTIC_UUID);
       String heartbeat=read_BLE_charcteristic(pRemoteService, HEARTBEAT_CHARACTERISTIC_UUID);
+      String colesterol=read_BLE_charcteristic(pRemoteService, COLESTEROL_CHARACTERISTIC_UUID);
+      String sugar=read_BLE_charcteristic(pRemoteService, SUGAR_CHARACTERISTIC_UUID);
+
+      BLERemoteService* pRemoteService1 = pClient->getService(SERVICE_UUID_FOR_SEX_AND_AGE);
+      if(pRemoteService1==nullptr){
+        Serial.println("service 2 not found");
+        continue;
+      }
+
+      String dead = read_BLE_charcteristic(pRemoteService1, DEAD_CHARACTERISTIC_UUID);
 
       char buffer[100];
-      snprintf(buffer, sizeof(buffer), "{%s,%s,%s}", 
-        temperature.c_str(), saturation.c_str(), heartbeat.c_str());
+      snprintf(buffer, sizeof(buffer), "{%s,%s,%s,%s,%s,%s}", 
+        temperature.c_str(), saturation.c_str(), heartbeat.c_str(), colesterol.c_str(), sugar.c_str(), dead.c_str());
         
       MacAddress[String(peripheral.getAddress().toString().c_str())]=buffer;
       pClient->disconnect();

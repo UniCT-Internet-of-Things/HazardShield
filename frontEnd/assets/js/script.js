@@ -1,5 +1,4 @@
 
-
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
@@ -163,7 +162,7 @@ confirmNewUser.addEventListener('click', function(){
     let cognome = document.querySelector('input[name = "cognome"]').value;
     let eta = document.querySelector('input[name = "eta"]').value;
     let task = document.querySelector('input[name = "task"]').value;
-    let infos = document.querySelector('input[name = "info"]').value;
+    let infos = document.querySelector('input[name = "infoParticolari"]').value;
     putWorker('http://localhost:5000/put_worker',
     {nome: nome, cognome: cognome, eta: eta, task: task, info: infos});
 
@@ -188,7 +187,9 @@ function putWorker(url, data) {
     .catch(error => {
         console.log('Error:', error);
     });
-  }
+}
+
+
 
 
 let interactiveSearch = document.querySelector('.search > input');
@@ -212,3 +213,295 @@ function handleAnchor(){
 
 }
 
+function zoomIntoMap(mapSection, anchorDist, segLen){
+    mapSection.classList.toggle('mapSection');
+    mapSection.classList.toggle('mapSectionTemp');
+    document.querySelectorAll('.mapSection').forEach(function(section){
+        if(section != mapSection) section.remove();
+    });
+    setTimeout(function(){
+        mapSection.classList.toggle('mapSectionTemp');
+        mapSection.classList.toggle('mapSection');
+        setTimeout(function(){
+            document.querySelector('.mapSection').remove();
+            i = 0;
+            console.log("anchorDist: " + anchorDist);
+            console.log("segLen: " + segLen);
+            mapGen(map, 1, segLen);
+        }, 5000);
+    }, 500);
+}
+
+var i = 0;
+function mapGen(map, anchorDist, segLen){
+    console.log("anchorDist: " + anchorDist)
+        console.log("index: " + i)
+        console.log(map);
+        let mapSection = document.createElement('div');
+        mapSection.classList.add('mapSection');
+
+        mapSection.style.height = "0px";
+        //tunnelLen -= "m"; 
+        console.log("TLEN: " + tunnelLen);   
+        if (tunnelLen >= 64) mapSection.classList.add('hoverable');
+        
+
+        let mapSectionsItem = {
+            "id" : i+1,
+            "section" : mapSection
+        };
+        mapSections.push(mapSectionsItem);
+
+        
+        
+
+        let placeholder = document.createElement('div');
+        placeholder.classList.add('doubleAnchor');
+
+        mapSection.appendChild(placeholder);
+
+        let anchorL = document.createElement('div');
+        anchorL.classList.add('anchor');
+        anchorL.style.marginLeft = "-5px";
+        placeholder.appendChild(anchorL);
+
+        anchorL.style.opacity = "0";
+        
+
+        let anchorR = document.createElement('div');
+        anchorR.classList.add('anchor');
+        anchorR.style.marginRight = "-5px";
+        placeholder.appendChild(anchorR);
+
+        anchorR.style.opacity = "0";
+        
+
+        anchors.push(anchorL);
+        anchors.push(anchorR);
+
+        if (i == 0){
+            anchorL.classList.remove('anchor');
+            anchorL.classList.add('firstAnchor');
+        }
+        if (i == anchorDistance - 1){
+            anchorR.classList.remove('anchor');
+            anchorR.classList.add('lastAnchor');
+        }
+        i++;
+            
+        
+        
+        if (tunnelLen >= 64) {
+            console.log("hoverable")
+            mapSection.addEventListener('click', function(e){
+                e.stopPropagation();
+                zoomIntoMap(mapSection, anchorDist, segLen);
+            });
+        }
+
+        map.appendChild(mapSection);
+            if (i < anchorDist) mapGen(map, anchorDist, segLen);
+            else {mapDraw();}
+    }
+
+    
+
+    function mapDraw(){
+        setTimeout(function(){
+            anchors.forEach(function(anchor){
+                anchor.style.opacity = "1";
+            });
+        }, 100);
+
+        setTimeout(function(){ 
+            mapSections.forEach(function(section){
+                section.section.style.height = "100%";
+            }
+            );
+        }, 500);
+
+    }
+
+
+var mapSections = [];
+var anchors = [];
+/*let firstMap = document.createElement('div');
+firstMap.classList.add('map');
+document.querySelector('.footerCompressed').appendChild(firstMap);
+*/
+console.log(anchors);
+
+
+let confirmMapInfo = document.querySelector('.submitMapInfo');
+var tunnelLen;
+var anchorsNum;
+
+var minAnchorNum;
+var anchorDistance;
+
+document.querySelector('input[name = "tunnelLen"]').addEventListener('keyup', function(){
+    tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
+    if (tunnelLen == 0 || tunnelLen == "") minAnchorNum = "";
+    
+    minAnchorNum =  Math.ceil(tunnelLen / 8);
+    //console.log(minAnchorNum);  
+    if (tunnelLen <= 8) {
+        document.querySelector(".anchorMin").innerHTML = 1;
+        document.querySelector('input[name = "anchorsNum"]').value = 1;
+    }
+    else {
+        minAnchorNum--;
+        console.log(minAnchorNum);
+        document.querySelector(".anchorMin").innerHTML = minAnchorNum;
+        document.querySelector('input[name = "anchorsNum"]').value = minAnchorNum;
+    }
+
+    let dist = Math.ceil(tunnelLen / (minAnchorNum+1));
+    if (dist > 8) dist = 8;
+    document.querySelector(".anchorDistance").innerHTML = dist;
+    document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(0, 98, 255, 0.8)";
+});
+
+document.querySelector('input[name = "anchorsNum"]').addEventListener('keyup', function(e){
+    anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
+    anchorDistance = Math.ceil(tunnelLen / anchorsNum);
+    
+        console.log(anchorDistance);
+        document.querySelector(".anchorDistance").innerHTML = anchorDistance;
+        if (anchorDistance > 8  || anchorsNum < minAnchorNum) {
+            document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(255, 0, 115, 0.8)";
+        }
+        else {
+            document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(0, 98, 255, 0.8)";
+        }
+        //background-color: rgba(0, 98, 255, 0.8);
+        //background-color: rgba(255, 0, 115, 0.8);
+    });
+
+confirmMapInfo.addEventListener('click', function(){
+    tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
+    anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
+    let anchorDist = Math.ceil(tunnelLen / anchorsNum);
+
+    if (confirmMapInfo.style.backgroundColor == "rgba(255, 0, 115, 0.8)"){
+        confirmMapInfo.classList.add('shake');
+        setTimeout(function(){
+            confirmMapInfo.classList.remove('shake');
+        }, 500);
+    }
+    else if (tunnelLen == "" || anchorsNum == ""){
+        confirmMapInfo.classList.add('shake');
+        setTimeout(function(){
+            confirmMapInfo.classList.remove('shake');
+        }, 500);
+    }
+    else{
+        console.log("anchrosNum: " + anchorsNum);
+        console.log("tunnelLen: " + tunnelLen);
+
+        let segNum = anchorsNum;
+        segNum++;
+        anchorDist = Math.ceil(tunnelLen / (segNum)); //2
+
+        console.log("anchorDist: " + anchorDist);
+        console.log("segnum: " + segNum);
+
+        if (segNum > 8){
+            createMap(8, segNum);
+        }
+        else {
+            createMap(segNum, anchorDist); 
+        }
+    }
+       
+});
+
+function createMap(segNum, segLen){
+
+    document.querySelector('.form').style.opacity = "0";
+
+    setTimeout(function(){ 
+        document.querySelector('.form').remove();
+
+        let tunnelLenghtVisualizer = document.createElement('div');
+        tunnelLenghtVisualizer.classList.add('tunnelLenghtVisualizer');
+        document.querySelector('.footerCompressed').appendChild(tunnelLenghtVisualizer);
+
+        for (let i = 0; i < segNum; i++){
+            let segment = document.createElement('div');
+            segment.classList.add('segment');
+            
+            let anchorDisplayL = document.createElement('div');
+            anchorDisplayL.classList.add('anchorDisplay');
+            let meters = Math.ceil(segLen * i);
+            if (meters >= 1000) meters = meters / 1000 + "km";
+            else meters += "m";
+            anchorDisplayL.innerHTML = meters;
+
+
+
+            segment.appendChild(anchorDisplayL);
+
+            if ( i == segNum - 1){ 
+                let anchorDisplayR = document.createElement('div');
+                anchorDisplayR.classList.add('anchorDisplay');
+                console.log("segmentLen: " + segLen);
+                let Tlen = 0;
+                if (tunnelLen >= 1000) Tlen = tunnelLen / 1000 + "km";
+                else Tlen = tunnelLen + "m";
+                anchorDisplayR.innerHTML = Tlen;
+                anchorDisplayR.style.marginRight = "-20px";
+                segment.appendChild(anchorDisplayR);
+            }
+            
+            
+
+            tunnelLenghtVisualizer.appendChild(segment);
+            let zoom = document.querySelector('.zoom');
+            zoom.style.opacity = "1";
+            let segLenDisplay = document.querySelector('.segLen');
+            segLenDisplay.innerHTML = segLen + "m";
+        }
+
+        let firstMap = document.createElement('div');
+        firstMap.classList.add('map');
+        document.querySelector('.footerCompressed').appendChild(firstMap);
+        firstMap.style.opacity = "0";
+        setTimeout(function(){
+            firstMap.style.opacity = "1";
+        }, 100);
+        setTimeout(function(){
+            mapGen(firstMap, segNum, segLen);
+        }, 1000);
+    }, 500);
+   
+
+
+
+
+
+    
+}
+
+
+
+/*
+Anum >= minAnum => Adist <= 8
+
+ceil(Tlen / Anum) = Adist
+
+ceil(Tlen / Adist) = mapSegLen
+
+ceil(mapSegLen / Adist) = Ancheron to display
+
+
+Tlen = 1000m
+Anum = 139
+
+Adist = 1000 / 139 = 7.19 => 8
+mapSegLen  = 1000 / 8 = 125
+
+Ancheron to display = 125 / 8 = 15.625 => 16
+
+
+*/
