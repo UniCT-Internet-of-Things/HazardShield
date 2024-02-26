@@ -321,6 +321,7 @@ void readBLE(){
       BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID_bracelet);
       if(pRemoteService==nullptr){
         Serial.println("service 1 not found");
+        Serial.println("service 1 not found");
         continue;
       }
 
@@ -346,6 +347,8 @@ void readBLE(){
       }
 
       char buffer[100];
+      snprintf(buffer, sizeof(buffer), "{%s,%s,%s,%s,%s,%s}", 
+        temperature.c_str(), saturation.c_str(), heartbeat.c_str(), colesterol.c_str(), sugar.c_str(), dead.c_str());
       snprintf(buffer, sizeof(buffer), "{%s,%s,%s,%s,%s,%s}", 
         temperature.c_str(), saturation.c_str(), heartbeat.c_str(), colesterol.c_str(), sugar.c_str(), dead.c_str());
         
