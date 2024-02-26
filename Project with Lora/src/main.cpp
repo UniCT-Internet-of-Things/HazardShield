@@ -7,6 +7,7 @@
 #include <function/functions.cpp>
 #include <list>
 
+
 #define ss 18
 #define rst 23
 #define dio0 26
@@ -75,7 +76,8 @@ void handle_queaue(){
     else if(String(current->type)=="MSG_to_bracelet"){
       //scrivere come inviare un messaggio per i braccialetti
       //e gestire l'inoltro del messaggio se non conosco il destinatario
-      msg_to_bracelet="1";
+      msg_to_bracelet=String(current->text);
+      ho_inviato_un_message=true;
     }
     else if(String(current->type)=="BraceletData"){
       // io sono il gateway se ricevo dei braceletdata
@@ -343,7 +345,20 @@ void readBLE(){
         Serial.println("Failed to find run characteristic UUID");
       }
       else{
-        pRunCharacteristic->writeValue(msg_to_bracelet.c_str());
+        if(msg_to_bracelet != "0"){
+          int index1 = msg_to_bracelet.indexOf(":\"");
+          int index2 = msg_to_bracelet.indexOf("\"}'");
+          String temp = msg_to_bracelet.substring(index1+2,index2);
+          if(msg_to_bracelet.indexOf("FF:FF:FF:FF:FF:FF")!=-1){
+            //qui ci vorrebbe una riga per prendere solo il messaggio e non tutto il json
+            pRunCharacteristic->writeValue(temp.c_str());
+          }
+          if(msg_to_bracelet.indexOf(peripheral.getAddress().toString().c_str())!=-1){
+            //qui ci vorrebbe una riga per prendere solo il messaggio e non tutto il json
+            pRunCharacteristic->writeValue(temp.c_str());
+            msg_to_bracelet="0";
+          }
+        }
       }
 
       char buffer[100];
@@ -360,6 +375,7 @@ void readBLE(){
       continue;
     }
     Serial.println(peripheral.getName().c_str());
+    msg_to_bracelet="0";
   }
   
   serializeJsonPretty(MacAddress, Serial);
