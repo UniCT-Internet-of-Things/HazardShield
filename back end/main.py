@@ -21,9 +21,15 @@ CORS(app)
 
 mongo = PyMongo.MongoClient('localhost:27017', 27017)
 
+global ws
+ws=None
 def send_request():
+
     while True:
-        sock.send("new data")
+        global ws
+        if(ws is not None):
+            print("sending request")
+            ws.send('Hello, world!')
         time.sleep(20)
 
 thread = threading.Thread(target=send_request)
@@ -37,8 +43,13 @@ def ricevi_dati():
     return 'Dati ricevuti con successo!'
 
 @sock.route('/get_all')
-def echo(sock):
-    sock.send('Hello, world!') 
+def echo(websocket):
+    
+    while True:
+        global ws
+        ws=websocket
+        data = ws.receive()
+        print(data)
 
 @app.route('/post_data', methods=['POST'])
 def post_data():

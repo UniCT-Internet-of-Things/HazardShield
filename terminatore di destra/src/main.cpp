@@ -4,7 +4,7 @@
 #include <HTTPClient.h>
 #include <LoRa.h>
 #include "esp_http_server.h"
-
+#include <function/functions.cpp>
 #include <list>
 
 #include <Preferences.h>
@@ -330,7 +330,6 @@ void setup() {
 
   //pref.putBool("set_esp",true); //ricordiamoci di metterlo a false nella versione finale
   
-  ho_settato_un_altro_esp=pref.getBool("set_esp");
   msgCount=pref.getInt("msgCount");
   id=pref.getInt("id");
 
@@ -360,13 +359,13 @@ void setup() {
 
   delay(3000);
 
-  if(ho_settato_un_altro_esp){
-    Serial.println("ho gia settato un altro esp");
-    searchAncore_task.disable();
-    LoRa.receive();
-  }else{
-    Serial.println("non ho ancora settato un altro esp");
-    searchAncore_task.enable();
+  if(id==0){
+    Serial.println("First time");
+    
+    ts.disableAll();
+    StartAdvertisingToSetID();
+    //String ID=scan_ancore_blocked();
+    //pref.putInt("id",ID.toInt()+1);
   }
 
   while (!send_ip())

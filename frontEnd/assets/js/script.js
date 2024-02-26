@@ -83,7 +83,10 @@ function createDashboardItem(){
 
 let extender = document.querySelector('.extenderUp');
 let main = document.querySelector('.mainVisible');
-let footer = document.querySelector('.footerCompressed');
+let footer;
+if (document.querySelector('.footerCompressed') != null)
+ footer = document.querySelector('.footerCompressed');
+else footer = document.querySelector('.footerExtended');
 let map = document.querySelector('.mapCompressed');
 
 extender.addEventListener('click', function(){
@@ -162,7 +165,7 @@ confirmNewUser.addEventListener('click', function(){
     let cognome = document.querySelector('input[name = "cognome"]').value;
     let eta = document.querySelector('input[name = "eta"]').value;
     let task = document.querySelector('input[name = "task"]').value;
-    let infos = document.querySelector('input[name = "infoParticolari"]').value;
+    let infos = document.querySelector('input[name = "info"]').value;
     putWorker('http://localhost:5000/put_worker',
     {nome: nome, cognome: cognome, eta: eta, task: task, info: infos});
 
@@ -212,10 +215,13 @@ function search(){
 function handleAnchor(){
 
 }
-
+var zoomedTunnelLen;
+var multiplier = 0;
 function zoomIntoMap(mapSection, anchorDist, segLen){
     mapSection.classList.toggle('mapSection');
     mapSection.classList.toggle('mapSectionTemp');
+    multiplier = 0;
+    console.log("mapSection: " + mapSection.classList[0]);
     document.querySelectorAll('.mapSection').forEach(function(section){
         if(section != mapSection) section.remove();
     });
@@ -226,9 +232,21 @@ function zoomIntoMap(mapSection, anchorDist, segLen){
             document.querySelector('.mapSection').remove();
             i = 0;
             console.log("anchorDist: " + anchorDist);
-            console.log("segLen: " + segLen);
-            mapGen(map, 1, segLen);
-        }, 5000);
+            console.log("Actual segment lenght: " + document.querySelector('.segLen').innerHTML);
+            let actualSegLen = document.querySelector('.segLen').innerHTML;
+            actualSegLen = actualSegLen.substring(0, actualSegLen.length - 1);
+            console.log("actualSegLen: " + actualSegLen);
+            console.log("tunnelLen: " + tunnelLen/(Number(anchorsNum)+1));
+            
+                console.log("aiuto");
+                zoomedTunnelLen = actualSegLen;
+                console.log("anchorsNum: " + anchorsNum);
+                anchorsNum = (Number(anchorsNum) + 1)  / 8;
+                console.log("anchorsNum: " + anchorsNum);
+                if (Number(anchorsNum) + 1 > 8) createMap(8, zoomedTunnelLen/8, zoomedTunnelLen);
+                else createMap(Math.floor(anchorsNum), Math.floor(zoomedTunnelLen/anchorsNum), zoomedTunnelLen);
+            
+        }, 1000);
     }, 500);
 }
 
@@ -239,11 +257,13 @@ function mapGen(map, anchorDist, segLen){
         console.log(map);
         let mapSection = document.createElement('div');
         mapSection.classList.add('mapSection');
+        mapSection.classList.add(i+1);
+         
 
         mapSection.style.height = "0px";
         //tunnelLen -= "m"; 
         console.log("TLEN: " + tunnelLen);   
-        if (tunnelLen >= 64) mapSection.classList.add('hoverable');
+        if ((Number(anchorsNum) + 1) >= 16) mapSection.classList.add('hoverable');
         
 
         let mapSectionsItem = {
@@ -289,9 +309,11 @@ function mapGen(map, anchorDist, segLen){
         }
         i++;
             
+
+        // se 8 no zoom 16 zoom 24 2 zoom 
         
-        
-        if (tunnelLen >= 64) {
+        console.log("CALC: "+ (Number(anchorsNum) + 1));
+        if ((Number(anchorsNum) + 1) >= 16) {
             console.log("hoverable")
             mapSection.addEventListener('click', function(e){
                 e.stopPropagation();
@@ -356,7 +378,8 @@ document.querySelector('input[name = "tunnelLen"]').addEventListener('keyup', fu
         document.querySelector('input[name = "anchorsNum"]').value = minAnchorNum;
     }
 
-    let dist = Math.ceil(tunnelLen / (minAnchorNum+1));
+    let dist = tunnelLen / (minAnchorNum+1);
+    dist = dist.toFixed(2);
     if (dist > 8) dist = 8;
     document.querySelector(".anchorDistance").innerHTML = dist;
     document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(0, 98, 255, 0.8)";
@@ -364,7 +387,8 @@ document.querySelector('input[name = "tunnelLen"]').addEventListener('keyup', fu
 
 document.querySelector('input[name = "anchorsNum"]').addEventListener('keyup', function(e){
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
-    anchorDistance = Math.ceil(tunnelLen / anchorsNum);
+    anchorDistance = tunnelLen / (Number(anchorsNum) +1);
+    anchorDistance = anchorDistance.toFixed(2);
     
         console.log(anchorDistance);
         document.querySelector(".anchorDistance").innerHTML = anchorDistance;
@@ -407,25 +431,31 @@ confirmMapInfo.addEventListener('click', function(){
         console.log("segnum: " + segNum);
 
         if (segNum > 8){
-            createMap(8, segNum);
+            createMap(8, Math.ceil(tunnelLen/8), tunnelLen);
         }
         else {
-            createMap(segNum, anchorDist); 
+            createMap(segNum, Math.ceil(tunnelLen/segNum), tunnelLen); 
         }
     }
        
 });
 
-function createMap(segNum, segLen){
+function createMap(segNum, segLen, tunnelLen){
 
-    document.querySelector('.form').style.opacity = "0";
+    if (document.querySelector('.form') != null)
+        document.querySelector('.form').style.opacity = "0";
 
     setTimeout(function(){ 
-        document.querySelector('.form').remove();
-
+        if (document.querySelector('.form') != null)
+            document.querySelector('.form').remove();
+        if (document.querySelector('.tunnelLenghtVisualizer') != null) {
+            document.querySelector('.tunnelLenghtVisualizer').remove();
+            document.querySelector('.map').remove();
+        }
         let tunnelLenghtVisualizer = document.createElement('div');
         tunnelLenghtVisualizer.classList.add('tunnelLenghtVisualizer');
-        document.querySelector('.footerCompressed').appendChild(tunnelLenghtVisualizer);
+        document.querySelector('.footerCompressed')?.appendChild(tunnelLenghtVisualizer);
+        document.querySelector('.footerExtended')?.appendChild(tunnelLenghtVisualizer);
 
         for (let i = 0; i < segNum; i++){
             let segment = document.createElement('div');
@@ -433,7 +463,8 @@ function createMap(segNum, segLen){
             
             let anchorDisplayL = document.createElement('div');
             anchorDisplayL.classList.add('anchorDisplay');
-            let meters = Math.ceil(segLen * i);
+            let meters = segLen * (i + multiplier);
+            meters = meters.toPrecision(2);
             if (meters >= 1000) meters = meters / 1000 + "km";
             else meters += "m";
             anchorDisplayL.innerHTML = meters;
@@ -465,7 +496,8 @@ function createMap(segNum, segLen){
 
         let firstMap = document.createElement('div');
         firstMap.classList.add('map');
-        document.querySelector('.footerCompressed').appendChild(firstMap);
+        document.querySelector('.footerCompressed')?.appendChild(firstMap);
+        document.querySelector('.footerExtended')?.appendChild(firstMap);
         firstMap.style.opacity = "0";
         setTimeout(function(){
             firstMap.style.opacity = "1";
@@ -505,3 +537,38 @@ Ancheron to display = 125 / 8 = 15.625 => 16
 
 
 */
+
+const socket = new WebSocket('ws://127.0.0.1:5000/get_all');
+
+socket.onopen = function(e) {
+    console.log("Connection established");
+    socket.send(["Hello"]);
+    console.log("[open] ciao");
+};
+
+socket.onmessage = function(event) {
+    console.log(`[message] Data received from server: ${event.data}`);
+};
+/*
+Anum >= minAnum => Adist <= 8
+
+ceil(Tlen / Anum) = Adist
+
+ceil(Tlen / Adist) = mapSegLen
+
+ceil(mapSegLen / Adist) = Ancheron to display
+
+
+Tlen = 1000m
+Anum = 139
+
+Adist = 1000 / 139 = 7.19 => 8
+mapSegLen  = 1000 / 8 = 125
+
+Ancheron to display = 125 / 8 = 15.625 => 16
+
+
+*/
+
+
+
