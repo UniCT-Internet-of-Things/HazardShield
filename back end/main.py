@@ -23,6 +23,7 @@ mongo = PyMongo.MongoClient('localhost:27017', 27017)
 
 global ws
 ws=None
+
 def send_request():
 
     while True:
@@ -42,8 +43,8 @@ def ricevi_dati():
     print(request.data)
     return 'Dati ricevuti con successo!'
 
-@sock.route('/get_all')
-def echo(websocket):
+@sock.route('/')
+def get_all(websocket):
     global ws
     ws=websocket
     sock.send('Hello, world!') 
