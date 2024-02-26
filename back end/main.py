@@ -44,9 +44,12 @@ def ricevi_dati():
 
 @sock.route('/get_all')
 def echo(websocket):
-    global ws
-    ws=websocket
-    sock.send('Hello, world!') 
+    
+    while True:
+        global ws
+        ws=websocket
+        data = ws.receive()
+        print(data)
 
 @app.route('/post_data', methods=['POST'])
 def post_data():

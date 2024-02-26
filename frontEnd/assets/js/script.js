@@ -165,7 +165,7 @@ confirmNewUser.addEventListener('click', function(){
     let cognome = document.querySelector('input[name = "cognome"]').value;
     let eta = document.querySelector('input[name = "eta"]').value;
     let task = document.querySelector('input[name = "task"]').value;
-    let infos = document.querySelector('input[name = "infoParticolari"]').value;
+    let infos = document.querySelector('input[name = "info"]').value;
     putWorker('http://localhost:5000/put_worker',
     {nome: nome, cognome: cognome, eta: eta, task: task, info: infos});
 
@@ -216,9 +216,12 @@ function handleAnchor(){
 
 }
 var zoomedTunnelLen;
+var multiplier = 0;
 function zoomIntoMap(mapSection, anchorDist, segLen){
     mapSection.classList.toggle('mapSection');
     mapSection.classList.toggle('mapSectionTemp');
+    multiplier = 0;
+    console.log("mapSection: " + mapSection.classList[0]);
     document.querySelectorAll('.mapSection').forEach(function(section){
         if(section != mapSection) section.remove();
     });
@@ -460,7 +463,7 @@ function createMap(segNum, segLen, tunnelLen){
             
             let anchorDisplayL = document.createElement('div');
             anchorDisplayL.classList.add('anchorDisplay');
-            let meters = segLen * i;
+            let meters = segLen * (i + multiplier);
             meters = meters.toPrecision(2);
             if (meters >= 1000) meters = meters / 1000 + "km";
             else meters += "m";
@@ -535,10 +538,12 @@ Ancheron to display = 125 / 8 = 15.625 => 16
 
 */
 
-const socket = new WebSocket('ws://127.0.0.1:5000');
+const socket = new WebSocket('ws://127.0.0.1:5000/get_all');
 
 socket.onopen = function(e) {
-    console.log("[open] Connection established");
+    console.log("Connection established");
+    socket.send(["Hello"]);
+    console.log("[open] ciao");
 };
 
 socket.onmessage = function(event) {
