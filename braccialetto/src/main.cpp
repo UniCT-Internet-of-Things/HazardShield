@@ -175,8 +175,8 @@ void loop() {
   }
   pDeadCharacteristic->notify();
 
-  if(pRunCharacteristic->getValue() == "1"){
-    Serial.println("RUNNNNNNNNNNNNN!!!!!!!");
+  if(pRunCharacteristic->getValue() != "0"){
+    Serial.println(String(pRunCharacteristic->getValue().c_str()));
   }
   delay(2000);
 }
