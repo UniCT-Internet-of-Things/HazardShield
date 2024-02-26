@@ -1,275 +1,385 @@
+#include <Arduino.h>
 #include <esp_now.h>
 #include <WiFi.h>
-#include <ArduinoBLE.h>
-#include <TaskScheduler.h>
-#include <ArduinoJson.h>
+#include <HTTPClient.h>
 #include <LoRa.h>
+#include "esp_http_server.h"
+
+#include <list>
+
+#include <Preferences.h>
+#include <TaskScheduler.h>
+
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEServer.h>
+#include <BLEclient.h>
+#include <BLEScan.h>
+
+#include <functions/function.cpp>
+
+//SSID of your network
+char ssid[] = "iPhone di Marco";
+//password of your WPA Network
+char pass[] = "tapop110";
 
 #define ss 18
 #define rst 23
 #define dio0 26
 
-bool is_broadcast(uint8_t* mac){
-  return (mac[0]==0xff&&
-          mac[1]==0xff&&
-          mac[2]==0xff&&
-          mac[3]==0xff&&
-          mac[4]==0xff&&
-          mac[5]==0xff
-          );
-}
+bool SendToServer = false;
+String toSend = "";
 
-bool i_m_gateway=true; 
+Scheduler ts;
+int id=0;
+bool ho_settato_un_altro_esp=false;
+int msgCount = 0; 
+Preferences pref;
 
-// Funzione per convertire una stringa MAC in un array di byte
-void macStrToByteArray(const String &macStr, uint8_t *macArray) {
-    // Controllo se la lunghezza della stringa MAC è corretta
-    if (macStr.length() != 17) {
-        Serial.println("Formato MAC non valido");
-        return;
+
+void handle_queaue();
+void handle_ack();
+void searchAncore();
+
+Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
+Task handle_message_queaue(500,TASK_FOREVER,&handle_queaue,&ts,true);
+Task handle_message_ack_queaue(15000,TASK_FOREVER,&handle_ack,&ts,true);
+
+
+
+extern BLEClient*  pClient;
+extern BLEAdvertisedDevice myAncora;
+extern bool AncoraFound;
+extern BLEScan *pBLEScan;
+
+
+BLECharacteristic *pTemperatureCharacteristic;
+
+std::list<char*> messaggi_in_arrivo;
+String base_url="http://172.20.10.2:5000/";
+std::list<struct_message*> messages_send;
+
+
+void handle_queaue(){
+
+  if(messaggi_in_arrivo.size()==0){
+    return;
+  }
+  Serial.println("Handling queaue");
+  char* incoming=messaggi_in_arrivo.front();
+  messaggi_in_arrivo.pop_front();
+    
+  Serial.println("Message received");
+  struct_message* current=new struct_message;
+  memcpy(current, incoming, sizeof(struct_message));
+
+  bool ho_inviato_un_message=false;
+  Serial.println("type:"+String(current->type));
+  Serial.println("original_sender:"+String(current->original_sender));
+  Serial.println("dest:"+String(current->dest));
+  Serial.println("source:"+String(current->source));
+
+  if (String(current->dest).toInt() == pref.getInt("id")&&
+      String(current->source).toInt() == id+1){
+
+    Serial.println("Message for me");
+    Serial.println(current->text);
+    Serial.println(current->type);
+    Serial.println(current->original_sender);
+    Serial.println(current->source);
+    Serial.println(current->dest);
+    Serial.println(current->messageCount);
+
+    if(String(current->type)=="ACK"){
+      for (std::list<struct_message*>::iterator it = messages_send.begin(); it != messages_send.end(); ++it){
+        if(String((*it)->messageCount)==String(current->text)){
+          Serial.println("ACK eliminato");
+          //elimina it da messages_send
+          messages_send.erase(it);
+          break;
+        }
+      }
     }
-
-    char hexNum[3]; // Buffer temporaneo per memorizzare coppie di cifre esadecimali
-    for (int i = 0; i < 6; ++i) {
-        hexNum[0] = macStr.charAt(i * 3);
-        hexNum[1] = macStr.charAt(i * 3 + 1);
-        hexNum[2] = '\0'; // Terminatore di stringa per assicurare una corretta conversione
-
-        // Converti la coppia di cifre esadecimali in un byte e memorizzalo nell'array
-        macArray[i] = strtoul(hexNum, NULL, 16);
+    else if(String(current->type)=="MSG_to_bracelet"){
+      //scrivere come inviare un messaggio per i braccialetti
+      //e gestire l'inoltro del messaggio se non conosco il destinatario
     }
-}
-
-// REPLACE WITH THE MAC Address of your receiver 
-uint8_t remote_ble[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-uint8_t remote_wifi_next[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-uint8_t remote_wifi_prec[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-uint8_t broadcastAddress[] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
-
-// Variable to store if sending data was successful
-String success;
-
-typedef struct struct_message {
-    char type[20];
-    char text[100]; 
-    char source[30];
-    char dest[30]; 
-} struct_message;
-
-String temp;
-
-// Create a struct_message to hold incoming data
-struct_message incomingReadings;
-
-// Create a struct_message to send data
-struct_message message;
-
-esp_now_peer_info_t peerInfo;
-esp_now_peer_info_t peerInfo2;
-esp_now_peer_info_t peerInfo3;
-
-
-bool data_ready=false;
-JsonDocument MacAddress;
-
-#define TEMPERATURE_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define SATURATION_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a9"
-#define HEARTBEAT_CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a0"
-
-bool send_data_to(uint8_t* dest){
-
-  if(!is_broadcast(dest)){
-    esp_err_t result = esp_now_send(dest, (uint8_t *) &message, sizeof(message));
-    if (result == ESP_OK) {
-    Serial.println("Sent with success");
-    Serial.println();
-    return true;
-    }
-    else {
-      Serial.println("Error sending the data");
-      Serial.println();
-      return false;
+    else if(String(current->type)=="BraceletData"){
+      // io sono il gateway se ricevo dei braceletdata
+      // devo inviarli al server
+      Serial.println("invio al server");
+      send_string_to_server(String("{\""+ String(current->original_sender) +"\":\""+current->text+"\"}"));
+      ho_inviato_un_message=true;
     }
   }
   else{
-    Serial.println("sarebbe Broadcast beddu");
-    return false;
-  }
-}
+    //il messaggio non è per me ma forse lo devo inoltrare  
+    
+    if(String(current->dest).toInt() < id &&
+      String(current->source).toInt() == (pref.getInt("id")+1)){
+        //il messaggio proviene da destra ed è per sinistra
+        //quindi lo inoltro a sinistra
+        char buffer[sizeof(struct_message)+1];
 
+        struct_message* inoltro;
 
+        memset(inoltro,0,sizeof(struct_message));
 
-void OnDataSent(const uint8_t *mac_addr, esp_now_send_status_t status) {
+        memcpy(inoltro->type, current->type, String(current->type).length());
+        String temp_dest(current->dest);
+        memcpy(inoltro->dest, current->dest, String(current->dest).length());
+        memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length());
+        memcpy(inoltro->source, String(id).c_str(), String(id).length());
+        memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length());  
+        msgCount++;
+        pref.putInt("msgCount",msgCount);
+        memcpy(inoltro->touched, "0\0", 2);
+        memcpy(inoltro->text, current->text, String(current->text).length());
+        
+        messages_send.push_back(inoltro);
 
-}
+        memcpy(buffer, inoltro, sizeof(struct_message));
+        buffer[sizeof(struct_message)]='\0';
 
-void OnDataRecv(const uint8_t * mac, const uint8_t *incomingData, int len) {
-  memcpy(&incomingReadings, incomingData, sizeof(incomingReadings));
-  Serial.print("Bytes received: ");
-  Serial.println(len);
-  Serial.print("type:  ");
-  Serial.println(incomingReadings.type);
-  Serial.print("dest:  ");
-  Serial.println(incomingReadings.dest);
-  Serial.print("text:  ");
-  Serial.println(incomingReadings.text);
+        LoRa.beginPacket();
+        for(int i=0;i<sizeof(struct_message)+1;i++){
+          LoRa.write(buffer[i]);
+        }
+        LoRa.endPacket();
+        ho_inviato_un_message=true;
+      }
 
-  Serial.print("source:");
-  Serial.println(incomingReadings.source);
+    if(String(current->dest).toInt() > id &&
+      String(current->source).toInt() == (pref.getInt("id")-1)){
+      //se il messaggio proviene da sinistra ed è per un nodo alla destra
+      //lo inoltro a destra
+      char buffer[sizeof(struct_message)+1];
 
-  Serial.println("");
+      struct_message* inoltro;
 
-  if(String(incomingReadings.type).equals("new node")){
-    macStrToByteArray(incomingReadings.source,remote_wifi_next);
-    Serial.println("nuovo nodo aggiunto");
+      memset(inoltro,0,sizeof(struct_message));
 
-    memcpy(peerInfo3.peer_addr, remote_wifi_next, 6);
-    peerInfo3.channel = 1;  
-    peerInfo3.encrypt = false;
+      memcpy(inoltro->type, current->type, String(current->type).length());
+      String temp_dest(current->dest);
+      memcpy(inoltro->dest, current->dest, String(current->dest).length());
+      memcpy(inoltro->original_sender, current->original_sender, String(current->original_sender).length());
+      memcpy(inoltro->source, String(id).c_str(), String(id).length());
+      memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length());  
+      msgCount++;
+      pref.putInt("msgCount",msgCount);
+      memcpy(inoltro->touched, "0\0", 2);
+      memcpy(inoltro->text, current->text, String(current->text).length());
+      
+      messages_send.push_back(inoltro);
 
-    if(esp_now_add_peer(&peerInfo3)!= ESP_OK){
-      Serial.println("Failed to add discovered peer");
-      return;
+      memcpy(buffer, inoltro, sizeof(struct_message));
+      buffer[sizeof(struct_message)]='\0';
+
+      LoRa.beginPacket();
+      for(int i=0;i<sizeof(struct_message)+1;i++){
+        LoRa.write(buffer[i]);
+      }
+      LoRa.endPacket();
+      ho_inviato_un_message=true;
     }
-    BLE.stopAdvertise();
-  }else if(String(incomingReadings.dest).equals(WiFi.macAddress())){
-    Serial.println("arrivato a destinazione");
-    Serial.println(incomingReadings.text);
+      
+    else{
+      Serial.println("Message not for me");
+    }
+  }
+
+  if(ho_inviato_un_message){
+      //se ho inoltrato un messaggio devo anche inviare l'ack per
+      //dire che ho ricevuto il messaggio
+
+      Serial.println("Inoltrato messaggio");
+
+      struct_message ack;
+
+      memset(&ack,0,sizeof(struct_message));
+
+      memcpy(ack.type, "ACK\0", 4);
+      String temp_dest(current->dest);
+      memcpy(ack.dest, current->source, String(current->source).length());
+      memcpy(ack.original_sender, current->original_sender, String(current->original_sender).length());
+      memcpy(ack.source, temp_dest.c_str(), temp_dest.length());
+      String temp_msgCount = current->messageCount;
+      memcpy(ack.messageCount, String(msgCount).c_str(), String(msgCount).length());  
+      memcpy(ack.touched, "0\0", 2);
+      memcpy(ack.text, temp_msgCount.c_str(),temp_msgCount.length());
+      
+      Serial.print("destinatario nuova ack:");
+      Serial.println(ack.dest);
+      Serial.print("msgcount nuova ack:");
+      Serial.println(ack.text);
+      msgCount++;
+      pref.putInt("msgCount",msgCount);
+
+      char buffer[sizeof(struct_message)+1];
+      memcpy(buffer, &ack, sizeof(struct_message));
+      buffer[sizeof(struct_message)]='\0';  
+      LoRa.beginPacket();
+      for(int i=0;i<sizeof(struct_message)+1;i++){
+        LoRa.write(buffer[i]);
+      }
+      LoRa.endPacket();
+      Serial.println("ACK sent");
+      
+    }
+    
+  free(current);
+  free(incoming);
+  LoRa.receive(); 
+  Serial.println(esp_get_free_heap_size());
+}
+
+void handle_ack(){
+  if(messages_send.size()==0){
+    Serial.println("No message to handle");
+    return;
+  }
+  struct_message* current=messages_send.front();
+  if(current->touched[0]=='1'){
+    Serial.println("Message touched");
+    messages_send.pop_front();
+    free(current);
   }
   else{
-    
-    Serial.println("invio lora");
-    LoRa.beginPacket();
-    String LoraMessage = String("{\"Sorgente\": \"") + String(incomingReadings.source) + String("\", \"messaggio\": \"") + String(incomingReadings.text) + String("\"}"); 
-    LoRa.print(LoraMessage);
-    LoRa.endPacket();
-    
-
+    current->touched[0]='1';
+    Serial.println("Message not touched");
   }
+
+  Serial.println(esp_get_free_heap_size());
 }
+
+void ricezioneLora(int packetSize) {
+  if (packetSize == 0) return;          // if there's no packet, return
+  int i=0;                 
+  char* incoming = (char*)malloc(packetSize);
+  while (LoRa.available()) {            
+    incoming[i] = (char)LoRa.read();
+    i++;
+  }
+  messaggi_in_arrivo.push_back(incoming);
+}
+
+
+esp_err_t post_handler(httpd_req_t *req)
+{
+    /* Destination buffer for content of HTTP POST request.
+     * httpd_req_recv() accepts char* only, but content could
+     * as well be any binary data (needs type casting).
+     * In case of string data, null termination will be absent, and
+     * content length would give length of string */
+    
+    char content[req->content_len+1];
+    content[req->content_len] = '\0';
+    int ret = httpd_req_recv(req, content, req->content_len);
+    if (ret <= 0) { 
+        if (ret == HTTPD_SOCK_ERR_TIMEOUT) {
+            
+            httpd_resp_send_408(req);
+        }
+        return ESP_FAIL;
+    }
+    Serial.println(content);
+
+    /* Send a simple response */
+    const char resp[] = "URI POST Response";
+    httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
+    return ESP_OK;
+}
+
+/* URI handler structure for GET /uri */
+httpd_uri_t uri_post = {
+    .uri      = "/receive_data",
+    .method   = HTTP_POST,
+    .handler  = post_handler,
+    .user_ctx = NULL
+};
+
+httpd_handle_t Server;
+
+httpd_handle_t start_webserver(void)
+{
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+
+    /* Empty handle to esp_http_server */
+    httpd_handle_t server = NULL;
+
+    /* Start the httpd server */
+    if (httpd_start(&server, &config) == ESP_OK) {
+        /* Register URI handlers */
+        httpd_register_uri_handler(server, &uri_post);
+    }
+    /* If server failed to start, handle will be NULL */
+    return server;
+}
+
+void stop_webserver(httpd_handle_t server)
+{
+    /* Stop the httpd server */
+    httpd_stop(server);
+}
+
 
 void setup() {
   // Init Serial Monitor
   Serial.begin(115200);
+  pref.begin("my_id", false); 
+
+  //pref.putBool("set_esp",true); //ricordiamoci di metterlo a false nella versione finale
+  
+  ho_settato_un_altro_esp=pref.getBool("set_esp");
+  msgCount=pref.getInt("msgCount");
+  id=pref.getInt("id");
 
   LoRa.setPins(ss, rst, dio0);
   while (!LoRa.begin(866E6)) {
-      Serial.println(".");
-      delay(500); 
+    Serial.println(".");
+    delay(500); 
   }
-
   LoRa.setSyncWord(0xffff);
+  LoRa.onReceive(ricezioneLora);
+  LoRa.receive();
+  Serial.println("LoRa Initializing OK!");
+
+  BLEDevice::init("Ancora");
+  pClient = BLEDevice::createClient();
 
   // Set device as a Wi-Fi Station
   WiFi.mode(WIFI_STA);
-  Serial.println();
-
-  if (!BLE.begin()) {
-    Serial.println("starting Bluetooth® Low Energy module failed!");
-    while (1);
+  WiFi.begin(ssid, pass);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
   }
 
-  BLE.setLocalName("Ancora");
-  BLE.scanForName("Ancora");
-  
-  while(true){
-    BLEDevice peripheral = BLE.available();
-    if(peripheral){
-      Serial.println("Address: " + peripheral.address());
-      BLE.stopScan();
+  Server=start_webserver();
+  Serial.println("created server");
 
-      macStrToByteArray(peripheral.address(),remote_ble);
-      macStrToByteArray(peripheral.address(),remote_wifi_prec);
-      remote_wifi_prec[5]=remote_wifi_prec[5]-2;
-      for(int i = 0; i < 6; i++){
-        Serial.print(remote_ble[i],HEX);
-        Serial.print(":");
-      }
-      Serial.println();
-      
-      peripheral.disconnect();
-      
-      BLE.stopScan();
-      break;
-    }
+  delay(3000);
 
-    Serial.println("searching");
-    delay(500);
-    LoRa.setPins(ss, rst, dio0);
-    
+  if(ho_settato_un_altro_esp){
+    Serial.println("ho gia settato un altro esp");
+    searchAncore_task.disable();
+    LoRa.receive();
+  }else{
+    Serial.println("non ho ancora settato un altro esp");
+    searchAncore_task.enable();
   }
 
-
-  // Init ESP-NOW
-  if (esp_now_init() != ESP_OK) {
-    Serial.println("Error initializing ESP-NOW");
-    return;
-  }
-
-  esp_now_register_send_cb(OnDataSent);
-  esp_now_register_recv_cb(OnDataRecv);
-
-  // Register peer broadcast
-  for(int i = 0; i < 6; i++){
-    Serial.print(broadcastAddress[i],HEX);
-    Serial.print(":");
-  }
-  Serial.println();
-
-  memcpy(peerInfo2.peer_addr, broadcastAddress, 6);
-  peerInfo2.channel = 1;  
-  peerInfo2.encrypt = false;
-  if(esp_now_add_peer(&peerInfo2)!= ESP_OK){
-    Serial.println("Failed to add broadcastAddress peer");
-    return;
-  }
-
-  for(int i = 0; i < 6; i++){
-    Serial.print(remote_wifi_prec[i],HEX);
-    Serial.print(":");
-  }
-  Serial.println();
-
-  // Register peer wifi
-  memcpy(peerInfo.peer_addr, remote_wifi_prec, 6);
-  peerInfo.channel = 1;  
-  peerInfo.encrypt = false;
-  // Add peer
-  
-  if(esp_now_add_peer(&peerInfo) != ESP_OK){
-    Serial.println("Failed to add peer");
-    return;
-  }
-    
-  strcpy(message.type,String("new node").c_str());
-  message.dest[String("new node").length()]='\0';
-
-  strcpy(message.source,WiFi.macAddress().c_str());
-  message.dest[WiFi.macAddress().length()]='\0';
-
-  strcpy(message.text,String("").c_str());
-  message.dest[String("").length()]='\0';
-
-
-  char mac_str[18];
-  snprintf(mac_str, sizeof(mac_str), "%02x:%02x:%02x:%02x:%02x:%02x",
-        remote_wifi_prec[0], remote_wifi_prec[1], remote_wifi_prec[2],
-        remote_wifi_prec[3], remote_wifi_prec[4], remote_wifi_prec[5]);
-
-  strcpy(message.dest,String(mac_str).c_str());
-  message.dest[String(mac_str).length()]='\0';
-
-  int retry=0;
-  while(!send_data_to(remote_wifi_prec)){ 
-    retry++;
-    if(retry==10)   
-      break;
+  while (!send_ip())
+  {
+    delay(1000);
+    Serial.println("retrying to send IP");
   }
   
+  Serial.println("Messaggio ricevuto");
+  SendToServer = false;
+  LoRa.disableCrc();
 }
 
-void loop() {
-
+void loop(){
+  ts.execute();
 }
