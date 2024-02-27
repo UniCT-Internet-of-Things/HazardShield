@@ -23,6 +23,7 @@ mongo = PyMongo.MongoClient('localhost:27017', 27017)
 
 global ws
 ws=None
+
 def send_request():
 
     while True:
