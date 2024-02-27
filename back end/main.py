@@ -24,6 +24,7 @@ mongo = PyMongo.MongoClient('localhost:27017', 27017)
 global ws
 ws=None
 
+
 def send_request():
 
     while True:
@@ -35,13 +36,18 @@ def send_request():
 
 thread = threading.Thread(target=send_request)
 
-@app.route('/get_data', methods=['POST'])
-def ricevi_dati():
-
+@app.route('/add_macAddress', methods=['POST'])
+def add_macAddresss():
     print(request)
-    #stampa tutta la struttura della richiesta
-    print(request.data)
-    return 'Dati ricevuti con successo!'
+    data = request.data.decode('utf-8')
+    data = json.loads(data)
+    personal=mongo.workers.personal_data
+    result=personal.find({"mobile_mac":data["mac"]})
+    if(result.count()>0 and data["mac"]!=""):
+        print("mac address gia presente")
+        return {"status":'error'}
+    personal.update_one({"id":int(data["id"])},{"$set":{"mobile_mac":data["mac"]}})
+    return {"status":'ok'}
 
 @sock.route('/get_all')
 def echo(websocket):
@@ -54,53 +60,66 @@ def echo(websocket):
 
 @app.route('/post_data', methods=['POST'])
 def post_data():
-    print(request)
     #stampa tutta la struttura della richiesta
-    print(request.data)
 
     #convert data from byte to string
     data = request.data.decode('utf-8')
-    print(data)
+    
     #convert data from string to dictionary
     data = json.loads(data)
-    print(data)
     Worker=mongo.workers.data
-    
-
+    personal=mongo.workers.personal_data
+    print(data)
     for key in data:
         data_to_insert={}
+        print("qui")
+        print(data[key])
         for key2 in data[key]:
-
+            print(key2)
+            omino=personal.find_one({"mobile_mac":key2})
+            if(omino is None):
+                continue    
+            data_to_insert["id"]=omino["id"]
             data_to_insert["mac_dispositivo"]=key2
             data_to_insert["timestamp"]=time.time()
             data_to_insert["sensor_data"]=data[key][key2]
             data_to_insert["sensor_id"]=key
+            global ws
+            if(ws is not None):
+                print("sending request")
+                ws.send(data_to_insert)
 
             Worker.insert_one(data_to_insert)
+            data_to_insert={}
+            
 
     return 'Dati ricevuti con successo!'    
     
 @app.route('/put_worker', methods=['POST'])
 def put_worker():
-    print(request)
-    #stampa tutta la struttura della richiesta
-    print(request.data)
+    
     data = request.data.decode('utf-8')
     print(data)
     #convert data from string to dictionary
     data = json.loads(data)
+    number_of_workers=mongo.workers.personal_data.count_documents({})
     user={
         "nome":data["nome"],
         "cognome":data["cognome"],
         "eta":data["eta"],
         "task":data["task"],
-        "info":data["info"]
+        "info":data["info"],
+        "status":data["status"],
+        "mobile_mac":"",
+        "id":number_of_workers+1
     }
     personal=mongo.workers.personal_data
 
     personal.insert_one(user)
 
     return 'Dati ricevuti con successo!'
+
+
 
 @app.route('/get_all_names', methods=['GET'])
 def get_all_names():
@@ -142,6 +161,6 @@ def register_ip():
     return 'Dati ricevuti con successo!'
 
 if __name__ == '__main__':
-    thread.start()
+    #thread.start()
     app.run(debug=True,host="0.0.0.0")
     
