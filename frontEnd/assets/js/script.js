@@ -265,7 +265,7 @@ function mapGen(map, anchorDist, segLen){
        
         console.log("sens: " + i* sens);
         // il segmento che stiamo rappresentando diviso il numero di sottosegmenti
-        mapSection.classList.add(i * ((Number(anchorsNum) + 1)) + offset);
+        mapSection.classList.add(i * (zoomedTunnelLen/8) + offset);
          
 
         mapSection.style.height = "0px";
@@ -440,6 +440,7 @@ confirmMapInfo.addEventListener('click', function(){
         console.log("anchorDist: " + anchorDist);
         console.log("segnum: " + segNum);
 
+        zoomedTunnelLen = tunnelLen;
         if (segNum > 8){
             createMap(8, Math.ceil(tunnelLen/8), tunnelLen);
         }
@@ -587,6 +588,5 @@ Ancheron to display = 125 / 8 = 15.625 => 16
 
 
 */
-
 
 
