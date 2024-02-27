@@ -218,10 +218,11 @@ function handleAnchor(){
 var zoomedTunnelLen;
 var multiplier = 0;
 function zoomIntoMap(mapSection, anchorDist, segLen){
+    zoomCount++;
     mapSection.classList.toggle('mapSection');
     mapSection.classList.toggle('mapSectionTemp');
     multiplier = mapSection.classList[0];
-    console.log("mapSection: " + mapSection.classList[0]);
+    console.log("mapSectionMultiplier: " + mapSection.classList[0]);
     document.querySelectorAll('.mapSection').forEach(function(section){
         if(section != mapSection) section.remove();
     });
@@ -242,11 +243,11 @@ function zoomIntoMap(mapSection, anchorDist, segLen){
                 zoomedTunnelLen = actualSegLen;
                 console.log("anchorsNum: " + anchorsNum);
                 
-                anchorsNum = (Number(anchorsNum) + 1)  / 8;
+                anchorsNum = (Number(anchorsNum)) / 8;
                 console.log("anchorsNum: " + anchorsNum);
                 console.log(Number(zoomedTunnelLen) * (Number(multiplier)+1))
-                if (Number(anchorsNum) + 1 > 8) createMap(8, zoomedTunnelLen/8, Number(zoomedTunnelLen) * (Number(multiplier)));
-                else createMap(Math.floor(anchorsNum), zoomedTunnelLen/anchorsNum, Number(zoomedTunnelLen) * (Number(multiplier)));
+                if (Number(anchorsNum) + 1 > 8) createMap(8, Number(zoomedTunnelLen) / 8, Number(zoomedTunnelLen) * (Number(multiplier)));
+                else createMap(Math.ceil(anchorsNum), Number(zoomedTunnelLen) / Number(anchorsNum), Number(zoomedTunnelLen) * (Number(multiplier)));
             
         }, 1000);
     }, 500);
@@ -254,6 +255,7 @@ function zoomIntoMap(mapSection, anchorDist, segLen){
 
 var i = 0;
 var sens = 0;
+var zoomCount = 1;
 function mapGen(map, anchorDist, segLen){
     console.log("anchorDist: " + anchorDist)
         console.log("index: " + i)
@@ -262,8 +264,8 @@ function mapGen(map, anchorDist, segLen){
         mapSection.classList.add('mapSection');
        
         console.log("sens: " + i* sens);
-        
-        mapSection.classList.add(i * ((Number(anchorsNum) + 1) / 8));
+        // il segmento che stiamo rappresentando diviso il numero di sottosegmenti
+        mapSection.classList.add(i * ((Number(anchorsNum) + 1)) + offset);
          
 
         mapSection.style.height = "0px";
@@ -407,12 +409,13 @@ document.querySelector('input[name = "anchorsNum"]').addEventListener('keyup', f
         //background-color: rgba(0, 98, 255, 0.8);
         //background-color: rgba(255, 0, 115, 0.8);
     });
-
+let segmentLen = 0;
 confirmMapInfo.addEventListener('click', function(){
     tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
     let anchorDist = Math.ceil(tunnelLen / anchorsNum);
     sens = Number(tunnelLen) / (Number(anchorsNum) + 1);
+    segmentLen = sens;
     console.log("sens: " + sens);
     if (confirmMapInfo.style.backgroundColor == "rgba(255, 0, 115, 0.8)"){
         confirmMapInfo.classList.add('shake');
@@ -446,7 +449,7 @@ confirmMapInfo.addEventListener('click', function(){
     }
        
 });
-
+var offset = 0;
 function createMap(segNum, segLen, tunnelLen){
     
     if (document.querySelector('.form') != null)
@@ -473,7 +476,8 @@ function createMap(segNum, segLen, tunnelLen){
             console.log("multiplier: " + multiplier);
             console.log("i: " + i);
             console.log("segLen: " + segLen);
-            let meters = Number(segLen) * (Number(i) + (Number(multiplier)));
+            offset = Number(multiplier);
+            let meters = ( Number(segLen) * Number(i) ) + (Number(multiplier));
 
             meters = meters.toPrecision(3);
             if (meters >= 1000) meters = meters / 1000 + "km";
@@ -491,8 +495,9 @@ function createMap(segNum, segLen, tunnelLen){
                 console.log("allSections: " + document.querySelector('.map'));
                 let Tlen = Number(meters.split("m")[0]) + Number(segLen);
                 Tlen = Tlen.toPrecision(3);
-                if (tunnelLen >= 1000) Tlen = tunnelLen / 1000 + "km";
-                else Tlen = Tlen + "m";
+                //if (tunnelLen >= 1000) Tlen = tunnelLen / 1000 + "km";
+                //else 
+                Tlen = Tlen + "m";
                 anchorDisplayR.innerHTML = Tlen;
                 anchorDisplayR.style.marginRight = "-20px";
                 segment.appendChild(anchorDisplayR);
