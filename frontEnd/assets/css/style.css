@@ -213,23 +213,26 @@ body{
 
 .name{
     font-size: calc(12px + 1vh);
-    margin-left: 10px;
-    margin-top: 10px;
+    height: 40%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .status{
     height: calc(30px + 2vh);
-    width: 100;
-    margin-top: 5px;
+    width: 100%;
+    height: 60%;
     display: flex;
     align-items: center;
-    justify-content: start;    
+    justify-content: space-evenly;  
+    flex-direction: column; 
 }
 
 
 .statusPlaceholder{
     font-size: calc(12px + 1vh);
-    margin-left: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -239,9 +242,7 @@ body{
 
 .statusIcon{
     height: 60%;
-
-    margin-left: 15px;
-    
+    width: 30px;
     display: flex;
     align-items: center;
     justify-content: start;
@@ -297,7 +298,8 @@ body{
 
 .cardTitle{
     font-size: calc(20px + 1vh);
-    height: 3vh;
+    height: 20%;
+    width: 100% ;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -306,11 +308,11 @@ body{
 .cardMain{
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: flex-start;
+    justify-content: space-evenly;
+    align-items: space-evenly;
     flex-wrap: wrap; 
     width: 100%;
-    height: 70%;
+    height: 80%;
 }
 
 .mainInfo{
@@ -326,12 +328,45 @@ body{
 .subInfo{
     display: flex;
     flex-direction: row;
-    justify-content: space-evenly;
+    justify-content: center;
     align-items: center;
-    height: 30%;
+    height: 40%;
     width: 100%;
-    margin-top: 20px;
+    gap: 10px;
 }
+
+.missionStatus{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: start;
+    padding-left: 15px;
+    height: 90%;
+    width: 30%;
+    font-size: calc(8px + 1vh);
+    text-wrap: nowrap;
+}
+
+.subInfo > input {
+    background-color: rgba(176, 176, 176, 0.2);
+    border: none;
+    border-radius: 10px;
+    width: 50%;
+    font-size: calc(12px + 1vh);
+    padding: 8px;
+}
+
+.confirmMission {
+    background-color: rgba(0, 98, 255, 0.8);
+    border: none;
+    border-radius: 10px;
+    width: 50px;
+    height: 40px;
+    font-size: calc(12px + 1vh);
+    padding: 8px;
+    cursor: pointer;
+}
+
 
 .info{
     font-size: calc(12px + 1vh);
@@ -347,7 +382,7 @@ body{
 }
 .HRvalue
 {
-   font-size: calc(30px + 0.5vh);
+   font-size: calc(15px + 0.5vh);
     margin-left: 10px;
     margin-top: -5px;
 }
@@ -357,7 +392,7 @@ body{
    height: 55px;
 }
 .TPvalue{
-   font-size: calc(30px + 0.5vh);
+   font-size: calc(15px + 0.5vh);
     margin-left: -5px;
     margin-top: -5px;
 }
@@ -368,7 +403,7 @@ body{
    margin-top: -15px;
 }
 .O2value{
-   font-size: calc(30px + 0.5vh);
+   font-size: calc(15px + 0.5vh);
     margin-left: 5px;
     margin-top: -5px;
 }
@@ -556,7 +591,7 @@ body{
     height: 10px;
     width: 10px;
     border-radius: 50%;
-    background-color: #777;
+    background-color: #00b3ff;
     margin-left: -5px;
     transition: all 0.5s ease-in-out;
 }
@@ -565,12 +600,20 @@ body{
     height: 10px;
     width: 10px;
     border-radius: 50%;
-    background-color: #777;
+    background-color: #00b3ff;
     opacity: 1;
     transition: all 0.5s ease-in-out;
-    
-    
 }
+
+.anchorShadow{
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    background-color: #00b3ff;
+    margin-right: -5px;
+    animation: blink 1s infinite ease-out both;
+}
+
   
 .lastAnchor{
     height: 10px;
@@ -864,7 +907,7 @@ body{
     padding: 10px;
     border-radius: 15px;
     transition: all 0.5s ease-in-out;
-    font-size: calc(12px + 1vh);
+    font-size: calc(14px + 1vh);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -872,7 +915,7 @@ body{
 
 .anchorMin::after{
     content: "N. minimo ancore";
-    font-size: calc(4px + 1vh);
+    font-size: calc(6px + 1vh);
     text-wrap: wrap;
     position: relative;
     left: 10px;
@@ -892,7 +935,7 @@ body{
 
 .anchorDistance:after{
     content: "Distanza ancore (max: 8m)";
-    font-size: calc(3px + 1vh);
+    font-size: calc(6px + 1vh);
     text-wrap: wrap;
     position: relative;
     left: 10px;
@@ -975,5 +1018,63 @@ body{
 .shake{
     animation: shake 0.5s;
     animation-fill-mode: forwards;
+}
+
+.dotShadow{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 40px;
+    height: 40px;
+    border-radius: 100%;
+    background-color: rgb(0, 255, 0);
+    z-index: 99;
+    animation: blink 1s infinite ease-out both;
+    opacity: 0.5;
+}
+
+.dotShadow2{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 60px;
+    height: 60px;
+    border-radius: 100%;
+    background-color: rgb(0, 255, 0);
+    z-index: 98;
+    animation: blink 1s infinite ease-out both;
+    opacity: 0.5;
+}
+
+@keyframes blink{
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    25% {
+        opacity: 0.5;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 0;
+    }
+}
+
+.dot{
+    position: absolute;
+    
+    height: 10px;
+    width: 10px;
+    border-radius: 100%;
+    background-color: rgb(0, 255, 0);
+    z-index: 100;
+
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
