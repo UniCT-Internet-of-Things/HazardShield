@@ -7,9 +7,9 @@ import requests
 import threading
 from flask_cors import CORS
 
-frontend_folder = './build/'
+frontend_folder = './../frontEnd/'
 app = Flask(__name__,
-            static_folder=frontend_folder+'_app',
+            static_folder=frontend_folder+"assets",
             template_folder=frontend_folder,
             )
 sock = Sock(app)
@@ -33,6 +33,10 @@ def send_request():
             print("sending request")
             ws.send('Hello, world!')
         time.sleep(20)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
 
 thread = threading.Thread(target=send_request)
 
@@ -64,7 +68,7 @@ def post_data():
 
     #convert data from byte to string
     data = request.data.decode('utf-8')
-    
+    print(data)
     #convert data from string to dictionary
     data = json.loads(data)
     Worker=mongo.workers.data
@@ -78,6 +82,7 @@ def post_data():
             print(key2)
             omino=personal.find_one({"mobile_mac":key2})
             if(omino is None):
+                print("omino non trovato")
                 continue    
             data_to_insert["id"]=omino["id"]
             data_to_insert["mac_dispositivo"]=key2

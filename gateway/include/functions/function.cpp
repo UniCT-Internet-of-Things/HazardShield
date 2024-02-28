@@ -101,7 +101,7 @@ void searchAncore(){
 
 bool send_string_to_server(String toSend){
   HTTPClient http;
-  String url=base_url+"get_data";
+  String url=base_url+"post_data";
   http.begin(url); 
   http.addHeader("Content-Type", "Content-Type: application/json"); 
 

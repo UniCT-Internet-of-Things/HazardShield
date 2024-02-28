@@ -1,4 +1,4 @@
-let ip = "192.168.70.18:5000";
+let ip = "192.168.113.129:5000";
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';

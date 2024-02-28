@@ -19,9 +19,9 @@
 #include <functions/function.cpp>
 
 //SSID of your network
-char ssid[] = "iPhone di Marco";
+char ssid[] = "Redmi Note 12 5G";
 //password of your WPA Network
-char pass[] = "tapop110";
+char pass[] = "ciccio2305";
 
 #define ss 18
 #define rst 23
@@ -45,18 +45,15 @@ Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
 Task handle_message_queaue(500,TASK_FOREVER,&handle_queaue,&ts,true);
 Task handle_message_ack_queaue(15000,TASK_FOREVER,&handle_ack,&ts,true);
 
-
-
 extern BLEClient*  pClient;
 extern BLEAdvertisedDevice myAncora;
 extern bool AncoraFound;
 extern BLEScan *pBLEScan;
 
-
 BLECharacteristic *pTemperatureCharacteristic;
 
 std::list<char*> messaggi_in_arrivo;
-String base_url="http://172.20.10.2:5000/";
+String base_url="http://192.168.113.129:5000/";
 std::list<struct_message*> messages_send;
 
 
@@ -108,7 +105,7 @@ void handle_queaue(){
       // io sono il gateway se ricevo dei braceletdata
       // devo inviarli al server
       Serial.println("invio al server");
-      send_string_to_server(String("{\""+ String(current->original_sender) +"\":\""+current->text+"\"}"));
+      send_string_to_server(String("{\""+ String(current->original_sender) +"\":"+current->text+"}"));
       ho_inviato_un_message=true;
     }
   }
