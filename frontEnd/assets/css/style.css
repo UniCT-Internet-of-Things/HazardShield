@@ -1054,17 +1054,32 @@ body{
 }
 
 .dotShadow{
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-
+    position: relative;
     width: 40px;
     height: 40px;
     border-radius: 100%;
     background-color: rgb(0, 255, 0);
     z-index: 99;
+    opacity: 0.5;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     animation: blink 1s infinite ease-out both;
+}
+
+.biggerDotShadow{
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 100%;
+    background-color: rgb(0, 255, 0);
+    z-index: 90;
+    left: 50%;
+    top: 50%;
+    animation: blink 1s infinite ease-out both;
+}
+
+.dotShadowVisible{
     opacity: 0.5;
 }
 
@@ -1098,16 +1113,41 @@ body{
 }
 
 .dot{
-    position: absolute;
-    
-    height: 10px;
-    width: 10px;
+    height: calc((100% / 3) - 20px);
+    width: calc((100% / 3) - 20px);
     border-radius: 100%;
     background-color: rgb(0, 255, 0);
     z-index: 100;
+    opacity: 0;
+}
 
+.biggerDot{
+    height: 20px;
+    width: 20px;
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    background-color: rgb(0, 255, 0);
+    border-radius: 100%;
 }
 
+.visible{
+    opacity: 1;
+}
+
+
+.dotDisplay{
+    height: 90px;
+    width: 90px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 25px;
+
+}

@@ -48,21 +48,35 @@ function createListItem(nome, cognome, id){
 
     li.addEventListener('click', function(){
         let cards = document.querySelectorAll('.right > .card');
-
+        let userSelected = users[id-1];
         cards.forEach(function(card){
             card.style.display = "flex";
             if (card.classList[1] == undefined ) card.classList.add(id);
             else card.classList.replace(card.classList[1], id);
             let infos = card.querySelectorAll('.info');
-            let userSelected = users[id-1];
+            
             infos[0].innerHTML = userSelected.nome + " " + userSelected.cognome + "   " + userSelected.eta + " anni";
             infos[1].innerHTML = userSelected.task;
             infos[2].innerHTML = userSelected.info;
         
         });
-        document.querySelectorAll('.subInfo > .info').forEach(function(info){
-            info.style.display = "none";
-        });
+        console.log(userSelected.mac)
+        if (userSelected.mac == ''){
+            document.querySelectorAll('.subInfo > .info').forEach(function(info){
+                info.style.display = "none";
+            });
+            document.querySelector('.missionStatus').style.display = "flex";
+            document.querySelector('input[name = "macAddress"]').style.display = "flex";
+            document.querySelector('.confirmMission').style.display = "flex";
+        }
+        else {
+            document.querySelector('.missionStatus').style.display = "none";
+            document.querySelector('input[name = "macAddress"]').style.display = "none";
+            document.querySelector('.confirmMission').style.display = "none";
+            document.querySelectorAll('.subInfo > .info').forEach(function(info){
+                info.style.display = "flex";
+            });
+        }
         document.querySelector('.right > .placeholderRight').style.display = "none";
     });
 }
@@ -396,10 +410,62 @@ function zoomIntoMap(mapSection){
 }
 
 
+function handleDots(anchor, id){
+    for (var i in mapSections){
+        if (mapSections[i].anchorL <= anchor && mapSections[i].anchorR >= anchor){
+            if (mapSections[i].connectedId.includes(id) == false) {
+                mapSections[i].connectedId.push(id);
+                mapSections[i].dotNum++;
+            }
+        }
+        else {
+            if (mapSections[i].connectedId.includes(id)){
+                mapSections[i].connectedId.splice(mapSections[i].connectedId.indexOf(id), 1);
+                mapSections[i].dotNum--;
+            }
+        }
+        
+    }
+    mapSections.forEach(function(section){
+        if (section.dotNum > 0 && section.dotNum <= 5){
+            let dots = section.section.querySelectorAll('.dot');
+           
+            if (section.dotNum == 1) dots[4].classList.add('visible');
+            else if (section.dotNum == 2) dots[1].classList.add('visible');
+            else if (section.dotNum == 3) dots[3].classList.add('visible');
+            else if (section.dotNum == 4) dots[5].classList.add('visible');
+            else if (section.dotNum == 5) dots[7].classList.add('visible');
+            else {console.log()}
+        }
+    });
+    
+}
 function mapGen(map, segNum, segLen){
 
     let mapSection = document.createElement('div');
     mapSection.classList.add('mapSection');
+
+    let div = document.createElement('div');
+    div.classList.add('dotDisplay');
+    for (let i = 0; i < 9; i++){
+        let dot = document.createElement('div');
+        let shadow = document.createElement('div');
+        dot.classList.add('dot');
+        dot.classList.add( i );
+        shadow.classList.add('dotShadow');
+        shadow.classList.add( i );
+        
+        div.appendChild(dot);
+        dot.appendChild(shadow);
+        // setTimeout(function(){
+        //     dot.classList.toggle('dot');
+        //     dot.classList.toggle('biggerDot');
+        //     let bigShadow = document.createElement('div');
+        //     bigShadow.classList.add('biggerDotShadow');
+        //     dot.appendChild(bigShadow);
+        // }, 1000);
+    }
+    mapSection.appendChild(div);
     
     // il segmento che stiamo rappresentando diviso il numero di sottosegmenti
     mapSection.classList.add(i * (segLen) + offset);
@@ -410,11 +476,7 @@ function mapGen(map, segNum, segLen){
     if (sectionToDisplay >= 16) mapSection.classList.add('hoverable');
     
 
-    let mapSectionsItem = {
-        "id" : i+1,
-        "section" : mapSection
-    };
-    mapSections.push(mapSectionsItem);
+   
     
     let placeholder = document.createElement('div');
     placeholder.classList.add('doubleAnchor');
@@ -439,10 +501,6 @@ function mapGen(map, segNum, segLen){
         infos.classList.remove('hovered');
     });
 
-    
-    
-
-
     anchorL.appendChild(infos);
     placeholder.appendChild(anchorL);
 
@@ -459,17 +517,29 @@ function mapGen(map, segNum, segLen){
     anchors.push(anchorL);
     anchors.push(anchorR);
 
+    let mapSectionsItem = {
+        "id" : i+1,
+        "section" : mapSection,
+        "anchorL" : Number(infos.innerHTML),
+        "anchorR" : Math.ceil((segLen * (i+1) + offset) / anchorDistance),
+        "dotNum" : 0,
+        "connectedId" : []
+
+    }
+    
     if (i == 0){
         anchorL.classList.remove('anchor');
         anchorL.classList.add('firstAnchor');
         infos.innerHTML = Math.ceil(offset / anchorDistance);
+        mapSectionsItem.anchorL = Math.ceil(offset / anchorDistance);
     }
     if (i == segNum - 1){
         anchorR.classList.remove('anchor');
         anchorR.classList.add('lastAnchor');
         let infos = document.createElement('div');
         infos.classList.add('anchorInfosLast');
-        infos.innerHTML = Math.ceil((segLen * (i+1) + offset) / anchorDistance);
+        if (segLen * segNum == tunnelLen) infos.innerHTML = Math.ceil((segLen * (i+1) + offset) / anchorDistance) + 1;
+        else infos.innerHTML = Math.ceil((segLen * (i+1) + offset) / anchorDistance);
         anchorR.appendChild(infos);
 
         anchorR.addEventListener('mouseover', function(e){
@@ -482,10 +552,14 @@ function mapGen(map, segNum, segLen){
             e.stopPropagation();
             infos.classList.remove('hovered');
         });
+
+        mapSectionsItem.anchorR = Number(infos.innerHTML);
     }
     i++;
+    console.log(mapSections);
+    mapSections.push(mapSectionsItem);
         
-
+    
     // se 8 no zoom 16 zoom 24 2 zoom 
     if (sectionToDisplay >= 16) {
         mapSection.addEventListener('click', function(e){
@@ -713,10 +787,79 @@ socket.onopen = function(e) {
     socket.send(["Hello"]);
     console.log("[open] ciao");
 };
-
+var datas = [];
 socket.onmessage = function(event) {
     console.log(`[message] Data received from server: ${event.data}`);
+    let data = JSON.parse(event.data);
+    let id = data["id"];
+    let mac = data["mac_dispositivo"];
+    let sens = data["sensor_data"];
+    let anchor = data["sensor_id"]
+    console.log(anchor);
+    sens = sens.split("{")[1];
+    sens = sens.split("}")[0];
+    sens = sens.split(",");
+
+    let newData = {
+        "id" : id,
+        "mac" : mac,
+        "temp" : sens[0],
+        "sat" : sens[1],
+        "hb" : sens[2],
+        "col" : sens[3],
+        "sugar" : sens[4],
+        "dead" : sens[5],
+        "anchor" : anchor
+    } 
+
+    if (datas.length == 0) datas.push(newData);
+    else {
+        for (var i in datas){
+            if (datas[i].id == id && datas[i].anchor == anchor){
+                datas[i] = newData;
+            }
+            else if(datas[i].id == id && datas[i].anchor != anchor ){
+                datas.push(newData);
+               
+            }
+
+            else if (i == datas.length - 1){
+                datas.push(newData);
+            }
+        }
+    }
+
+    refreshStats();
+    handleDots(anchor, id);
 };
+
+setInterval(function(){
+    
+}, 10000);
+
+function refreshStats(){
+    let card = document.querySelector('.card');
+    let style = window.getComputedStyle(card);
+    if (style.display != "none") {
+        let index = Number(card.classList[1]);
+        for (var i in datas) {
+            if (datas[i].id == index) {
+                data = datas[i];
+            }
+        }
+        
+        let tempVal = document.querySelector('.TPvalue');
+        tempVal.innerHTML = data.temp;
+
+        let hbVal = document.querySelector('.HRvalue');
+        hbVal.innerHTML = data.hb;
+
+        let satVal = document.querySelector('.O2value');
+        satVal.innerHTML = data.sat;
+    }
+    
+    
+}
 
 function putMacAddress(url, data) {
     fetch(url, {
@@ -736,5 +879,6 @@ function putMacAddress(url, data) {
           console.log('Error:', error);
       });
 }
+
 
 
