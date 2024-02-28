@@ -34,7 +34,7 @@ void handle_ack();
 
 Scheduler ts;
 
-Task ReadBLE(5000,TASK_FOREVER,&readBLE,&ts,true);
+Task ReadBLE(20000,TASK_FOREVER,&readBLE,&ts,true);
 Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
 Task handle_message_queaue(100,TASK_FOREVER,&handle_queaue,&ts,true);
 Task handle_message_ack_queaue(20000,TASK_FOREVER,&handle_ack,&ts,true);
@@ -76,7 +76,9 @@ void handle_queaue(){
     else if(String(current->type)=="MSG_to_bracelet"){
       //scrivere come inviare un messaggio per i braccialetti
       //e gestire l'inoltro del messaggio se non conosco il destinatario
+      Serial.println("Messaggio per il braccialetto");
       msg_to_bracelet=String(current->text);
+      //Serial.println(msg_to_bracelet);
       ho_inviato_un_message=true;
     }
     else if(String(current->type)=="BraceletData"){
@@ -350,10 +352,12 @@ void readBLE(){
           String temp = msg_to_bracelet.substring(index1+2,index2);
           if(msg_to_bracelet.indexOf("FF:FF:FF:FF:FF:FF")!=-1){
             //qui ci vorrebbe una riga per prendere solo il messaggio e non tutto il json
+            Serial.println(String(temp).c_str());
             pRunCharacteristic->writeValue(temp.c_str());
           }
           if(msg_to_bracelet.indexOf(peripheral.getAddress().toString().c_str())!=-1){
             //qui ci vorrebbe una riga per prendere solo il messaggio e non tutto il json
+            Serial.println(String(temp).c_str());
             pRunCharacteristic->writeValue(temp.c_str());
             msg_to_bracelet="0";
           }
