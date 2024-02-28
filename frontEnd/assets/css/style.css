@@ -295,7 +295,55 @@ body{
     align-items: flex-start;
     padding: 18px;
 }
+.cardPerm{
+    background-color:  #333333;
+    height: calc(200px + 15vh);
+    width: calc(400px + 15vw);
+    border-radius: 10px;
+    margin: 15px;
+    border: 1px solid #555;
+    display: none;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: flex-start;
+    padding: 18px;
+}
+.org{
+    display: flex;
+    flex-direction: row;
+    width: 95%;
+    align-items: center;
+    justify-content: space-evenly;
+    gap: 10px;
+}
+.org > select {
+    background-color: rgba(176, 176, 176, 0.2);
+    border: none;
+    outline: none;
+    border-radius: 10px;
+    width: 30%;
+    height: 30px;
+    font-size: calc(8px + 1vh);
+}
 
+.permInput{
+    background-color: rgba(176, 176, 176, 0.2);
+    border: none;
+    border-radius: 10px;
+    width: 60%;
+    font-size: calc(12px + 1vh);
+    padding: 8px;
+}
+.sendMsg{
+    background-color: rgba(0, 98, 255, 1);
+    border: none;
+    border-radius: 10px;
+    width: 50px;
+    height: 40px;
+    font-size: calc(12px + 1vh);
+    padding: 8px;
+    cursor: pointer;
+}
 .cardTitle{
     font-size: calc(20px + 1vh);
     height: 20%;

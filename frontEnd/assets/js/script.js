@@ -1,4 +1,4 @@
-let ip = "192.168.113.129:5000";
+let ip = "192.168.70.18:5000";
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
@@ -78,8 +78,57 @@ function createListItem(nome, cognome, id){
             });
         }
         document.querySelector('.right > .placeholderRight').style.display = "none";
+        document.querySelector('.cardPerm').style.display = "flex";
+        let selector = document.querySelector('#dest');
+        users.forEach(function(user){
+            let option = document.createElement('option');
+            option.innerHTML = user.nome + " " + user.cognome;
+            option.value = user.id;
+            selector.add(option);
+        });
     });
 }
+
+document.querySelector('.sendMsg').addEventListener('click', function(){
+    let dest = document.querySelector('select').value;
+    console.log(dest);
+    let msg = document.querySelector('input[name = "text"]').value;
+    let toSend = {
+        "msg" : { },
+        "dest" : ""
+    }
+    users.forEach(function(user){
+        if (user.id == dest) {
+            toSend.msg[user.mac] = msg;
+        }
+    });
+
+    datas.forEach(function(data){
+        console.log(data.mac);
+        if (data.id == dest){
+            toSend.dest = data.anchor;
+        }
+    });
+let url = 'http://' + ip + '/send_msg';
+console.log(toSend);
+fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(toSend),
+    headers: {
+        'Content-Type': 'application/json'
+    }
+})
+.then(response => console.log(response))
+.then(data => {
+   console.log('Success:', data);
+})
+.catch(error => {
+    // handle error
+});
+    
+    console.log(dest);
+    console.log(msg);
+});
 
 document.querySelector('.confirmMission').addEventListener('click', function(){
     let mac = document.querySelector('input[name = "macAddress"]')?.value;
@@ -268,6 +317,7 @@ function getWorkers(url) {
       .catch(error => {
           console.log('Error:', error);
       });
+
 }
 
 var users = [];
@@ -346,7 +396,6 @@ document.querySelector('.zoomOut').addEventListener('click', function(){
     precZoom.pop();
 });
 
-
 function zoomIntoMap(mapSection){
     unlockZoom();
     let preczoom = {
@@ -411,24 +460,48 @@ function zoomIntoMap(mapSection){
 
 
 function handleDots(anchor, id){
+    var section = -1;
+    console.log("anchor: " + anchor);
+    console.log("id: " + id)
+
+    mapSections.forEach(function(el){
+        if (el.connectedId.includes(id)) {
+            console.log("section " + el.id + " has connected id's: "+ el.connectedId);
+            console.log("dotnum: " + el.dotNum);
+            el.connectedId.splice(el.connectedId.indexOf(id), '1')
+            el.dotNum--;
+
+            console.log("section " + el.id + " has connected id's: "+ el.connectedId);
+            console.log("dotnum: " + el.dotNum);
+        };
+    })
+
+
     for (var i in mapSections){
-        if (mapSections[i].anchorL <= anchor && mapSections[i].anchorR >= anchor){
+        if ( anchor >= mapSections[i].anchorL && anchor < mapSections[i].anchorR){
             if (mapSections[i].connectedId.includes(id) == false) {
+                console.log("here")
                 mapSections[i].connectedId.push(id);
                 mapSections[i].dotNum++;
-            }
+                section = i;
+                }
         }
         else {
-            if (mapSections[i].connectedId.includes(id)){
-                mapSections[i].connectedId.splice(mapSections[i].connectedId.indexOf(id), 1);
-                mapSections[i].dotNum--;
-            }
+            // for (var i in mapSections){
+            //     console.log(section)
+            //     if (i != section && mapSections[i].connectedId.includes(id) == true)
+            //     mapSections[i].connectedId.splice(mapSections[i].connectedId.indexOf(id), 1);
+            //     mapSections[i].dotNum--;
+            // }
         }
+        
         
     }
     mapSections.forEach(function(section){
+        console.log("dotnumber: " + section.dotNum);
+        let dots = section.section.querySelectorAll('.dot');
         if (section.dotNum > 0 && section.dotNum <= 5){
-            let dots = section.section.querySelectorAll('.dot');
+            
            
             if (section.dotNum == 1) dots[4].classList.add('visible');
             else if (section.dotNum == 2) dots[1].classList.add('visible');
@@ -436,6 +509,11 @@ function handleDots(anchor, id){
             else if (section.dotNum == 4) dots[5].classList.add('visible');
             else if (section.dotNum == 5) dots[7].classList.add('visible');
             else {console.log()}
+        }
+        else if (section.dotNum == 0){
+            dots.forEach(function(el){
+                el.classList.remove('visible')
+            })
         }
     });
     
