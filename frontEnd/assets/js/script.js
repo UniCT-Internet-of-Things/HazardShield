@@ -3,7 +3,7 @@ let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
 let yellow = '#ffff00';
-
+var precision = 0;
 function changeColor(color) {
     a[0].style.stroke = color;
     a[1].style.fill = color;
@@ -937,6 +937,9 @@ document.querySelector('input[name = "anchorsNum"]').addEventListener('keyup', f
 let segmentLen = 0;
 confirmMapInfo.addEventListener('click', function(){
     tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
+    if (tunnelLen > 1000) precision = 4;
+    else if (tunnelLen >= 100 && tunnelLen < 1000) precision = 3;
+    else precision = 2;
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
 
     anchorDistance = Number(tunnelLen) / (Number(anchorsNum) + 1);
@@ -1156,7 +1159,7 @@ function refreshStats(){
         let aVal = document.querySelectorAll('.mainInfo > div >.info')[2].innerHTML = "Ancora: " + data.anchor;
 
         let meters = 0;
-        meters = Number(data.anchor * Number(anchorDistance)).toPrecision(4);
+        meters = Number(data.anchor * Number(anchorDistance));
         console.log(Number(meters ));
         console.log(Number(anchorDistance));
         console.log(Number(meters + anchorDistance / 2));
@@ -1329,3 +1332,18 @@ fetch(url, {
     // Handle any errors
   });
 }
+
+document.querySelector('.resetMac').addEventListener("click", function(e){
+    let id = document.querySelector('.card').classList[1];
+    console.log(id)
+    putMacAddress('http://' + ip + '/add_macAddress', {id: id, mac: ""});
+    let items = document.querySelectorAll('.listItem')
+    for (var item of items){
+        item.remove();
+    }
+    users = [];
+    document.querySelector('.right > .placeholderRight').style.display = "flex";
+    document.querySelector('.right > .card').style.display = "none";
+    document.querySelector('.cardPerm').style.display = "none";
+    appStart();
+})
