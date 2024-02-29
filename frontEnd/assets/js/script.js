@@ -1,4 +1,4 @@
-let ip = "localhost:5000";
+let ip = "151.97.147.236:5000";
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
@@ -912,9 +912,9 @@ document.querySelector('input[name = "tunnelLen"]').addEventListener('keyup', fu
     }
 
     let dist = tunnelLen / (minAnchorNum+1);
-    dist = dist.toFixed(2);
     if (dist > 8) dist = 8;
     document.querySelector(".anchorDistance").innerHTML = dist;
+    anchorDistance = dist;
     document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(0, 98, 255, 0.8)";
 });
 
@@ -922,6 +922,7 @@ document.querySelector('input[name = "anchorsNum"]').addEventListener('keyup', f
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
     
     anchorDistance = Number(tunnelLen) / ((Number(anchorsNum) + 1));
+    console.log("anchor dist: " + anchorDistance);
     document.querySelector(".anchorDistance").innerHTML = anchorDistance.toFixed(3);
     if (anchorDistance > 8  || anchorsNum < minAnchorNum) {
         document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(255, 0, 115, 0.8)";
@@ -938,7 +939,7 @@ confirmMapInfo.addEventListener('click', function(){
     tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
 
-    anchorDistance = Number(tunnelLen) / (Number(anchorsNum));
+    anchorDistance = Number(tunnelLen) / (Number(anchorsNum) + 1);
     sectionToDisplay = Math.ceil(Number(tunnelLen) / Number(anchorDistance));
     /*
     sens = Number(tunnelLen) / (Number(anchorsNum) + 1);
@@ -1108,21 +1109,20 @@ socket.onmessage = function(event) {
         "anchor" : anchor
     } 
 
+
     if (datas.length == 0) datas.push(newData);
     else {
         for (var i in datas){
-            if (datas[i].id == id && datas[i].anchor == anchor){
+            if (datas[i].id == id){
                 datas[i] = newData;
+                break;
             }
-            else if(datas[i].id == id && datas[i].anchor != anchor ){
-                datas.push(newData);
-               
-            }
-
             else if (i == datas.length - 1){
                 datas.push(newData);
             }
         }
+        
+        console.log(datas);
     }
 
     refreshStats();
@@ -1155,11 +1155,55 @@ function refreshStats(){
         let sugarVal = document.querySelector('.SUvalue');
         sugarVal.innerHTML = data.sugar;
         
+        let aVal = document.querySelectorAll('.mainInfo > div >.info')[2].innerHTML = "Ancora: " + data.anchor;
+
+        let meters = 0;
+        meters = Number(data.anchor * Number(anchorDistance)).toPrecision(3);
+        console.log(Number(meters ));
+        console.log(Number(anchorDistance));
+        console.log(Number(meters + anchorDistance));
+        console.log(Number(meters - anchorDistance));
+
+
+
+        document.querySelectorAll('.mainInfo > div > .info')[3].innerHTML = "Posizione: (" + Number(meters - anchorDistance).toPrecision(3) + "m, " + Number(meters + anchorDistance).toPrecision(3) + "m)"; 
     }
     deathAlert();
 }
 
 function deathAlert(){
+    let listItem = document.querySelectorAll('.listItem');
+    listItem.forEach(function(item){ item.remove(); });
+
+    for (var user of users){
+        for (var data of datas){
+            if (user.id == data.id && data.dead == 1){
+                createListItem(user.nome, user.cognome, user.id);
+            }
+        }
+    }
+
+    for (var user of users){
+        for (var data of datas){
+            if (user.id == data.id && data.dead == 0){
+                createListItem(user.nome, user.cognome, user.id);
+            }
+        }
+    }
+
+    for (var user of users){
+        let bool = 0;
+        for (var data of datas){
+            if (user.id == data.id && data.dead == 1){
+                bool = 1;
+            }
+            if (user.id == data.id && data.dead == 0){
+                bool = 1;
+            }
+        }
+        if (bool == 0) createListItem(user.nome, user.cognome, user.id);
+    }
+
     for (var el of document.querySelectorAll('.listItem')){
         for (var data of datas){
             if (el.classList[1] == data.id && data.dead == 1){
@@ -1174,7 +1218,11 @@ function deathAlert(){
             }
         }
     }
+
+
+    
 }
+
 
 
 function putMacAddress(url, data) {
@@ -1198,10 +1246,10 @@ function putMacAddress(url, data) {
 
 
 setInterval(function(){
-    generator();
+    //generator();
 }, 3000);
 function generator(){
-    let id = Math.floor(Math.random() * 1) + 1;
+    let id = Math.floor(Math.random() * 3) + 1;
     let mac = Math.floor(Math.random() * 100000);
     let temp = Math.floor(Math.random() * 100);
     let sat = Math.floor(Math.random() * 100);
