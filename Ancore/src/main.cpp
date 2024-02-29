@@ -405,7 +405,7 @@ void setup(){
   BLEDevice::init("Ancora");
   pClient = BLEDevice::createClient();
 
-  //pref.putBool("set_esp",true); //ricordiamoci di metterlo a false nella versione finale
+  //pref.putBool("set_esp",true); //decommenta se vuoi che non cerchi le ancore
   ho_settato_un_altro_esp=pref.getBool("set_esp");
   msgCount=pref.getInt("msgCount");
   id=pref.getInt("id");
