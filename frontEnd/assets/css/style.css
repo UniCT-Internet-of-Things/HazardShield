@@ -295,7 +295,55 @@ body{
     align-items: flex-start;
     padding: 18px;
 }
+.cardPerm{
+    background-color:  #333333;
+    height: calc(200px + 15vh);
+    width: calc(400px + 15vw);
+    border-radius: 10px;
+    margin: 15px;
+    border: 1px solid #555;
+    display: none;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: flex-start;
+    padding: 18px;
+}
+.org{
+    display: flex;
+    flex-direction: row;
+    width: 95%;
+    align-items: center;
+    justify-content: space-evenly;
+    gap: 10px;
+}
+.org > select {
+    background-color: rgba(176, 176, 176, 0.2);
+    border: none;
+    outline: none;
+    border-radius: 10px;
+    width: 30%;
+    height: 30px;
+    font-size: calc(8px + 1vh);
+}
 
+.permInput{
+    background-color: rgba(176, 176, 176, 0.2);
+    border: none;
+    border-radius: 10px;
+    width: 60%;
+    font-size: calc(12px + 1vh);
+    padding: 8px;
+}
+.sendMsg{
+    background-color: rgba(0, 98, 255, 1);
+    border: none;
+    border-radius: 10px;
+    width: 50px;
+    height: 40px;
+    font-size: calc(12px + 1vh);
+    padding: 8px;
+    cursor: pointer;
+}
 .cardTitle{
     font-size: calc(20px + 1vh);
     height: 20%;
@@ -321,16 +369,18 @@ body{
     justify-content: space-evenly;
     align-items: flex-start;
     padding-left: 25px;
-    height: 60%;
+    height: 50%;
     width: 100%;
 }
 
 .subInfo{
+    
     display: flex;
     flex-direction: row;
-    justify-content: center;
+    justify-content: space-evenly;
     align-items: center;
-    height: 40%;
+    flex-wrap: wrap;
+    height: 50%;
     width: 100%;
     gap: 10px;
 }
@@ -374,6 +424,10 @@ body{
     align-items: center;
     justify-content: center;
     
+    
+}
+.subInfo > .info{
+    width: 150px;
 }
 
 .HRicon
@@ -407,6 +461,26 @@ body{
     margin-left: 5px;
     margin-top: -5px;
 }
+.SUicon{
+   
+    height: 55px;
+    margin-top: -15px;
+ }
+ .SUvalue{
+    font-size: calc(15px + 0.5vh);
+     margin-left: 5px;
+     margin-top: -5px;
+ }
+ .COLicon{
+   
+    height: 55px;
+    margin-top: -15px;
+ }
+ .COLvalue{
+    font-size: calc(15px + 0.5vh);
+     margin-left: 5px;
+     margin-top: -5px;
+ }
 
 .footerCompressed{
     display: flex;
@@ -541,6 +615,33 @@ body{
     scale: 1;
     transition: all 0.5s ease-in-out;
 }
+
+.whois{
+    width: 300px;
+    height: 120px;
+    border-radius: 15px;
+    background-color: rgba(77, 77, 77, 0.9);
+    position: absolute;
+    left: 50%;
+    top: 65px;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    padding: 5px;
+    color: white;
+    opacity: 0;
+    transition: all 0.5s ease-in-out;
+    
+}
+
+.whoisDisp {
+    font-size: calc(6px + 1vh);
+}
+
 
 .mapSectionTemp{
     height: 100%;
@@ -763,16 +864,6 @@ body{
 }
 
 
-
-.subInfo{
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    align-items: center;
-    height: 30%;
-    width: 100%;
-    margin-top: 20px;
-}
 
 .info > span{
     font-size: calc(12px + 1vh);
@@ -1054,17 +1145,32 @@ body{
 }
 
 .dotShadow{
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-
+    position: relative;
     width: 40px;
     height: 40px;
     border-radius: 100%;
     background-color: rgb(0, 255, 0);
     z-index: 99;
+    opacity: 0.5;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     animation: blink 1s infinite ease-out both;
+}
+
+.biggerDotShadow{
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    border-radius: 100%;
+    background-color: rgb(0, 255, 0);
+    z-index: 90;
+    left: 50%;
+    top: 50%;
+    animation: blink 1s infinite ease-out both;
+}
+
+.dotShadowVisible{
     opacity: 0.5;
 }
 
@@ -1098,16 +1204,41 @@ body{
 }
 
 .dot{
-    position: absolute;
-    
-    height: 10px;
-    width: 10px;
+    height: calc((100% / 3) - 20px);
+    width: calc((100% / 3) - 20px);
     border-radius: 100%;
     background-color: rgb(0, 255, 0);
     z-index: 100;
+    opacity: 0;
+}
 
+.biggerDot{
+    height: 40px;
+    width: 40px;
+    position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+    background-color: rgb(0, 255, 0);
+    border-radius: 100%;
 }
 
+.visible{
+    opacity: 1;
+}
+
+
+.dotDisplay{
+    height: 90px;
+    width: 90px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 25px;
+
+}

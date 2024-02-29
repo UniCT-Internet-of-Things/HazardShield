@@ -34,7 +34,7 @@ void handle_ack();
 
 Scheduler ts;
 
-Task ReadBLE(15000,TASK_FOREVER,&readBLE,&ts,true);
+Task ReadBLE(20000,TASK_FOREVER,&readBLE,&ts,true);
 Task searchAncore_task(10000,TASK_FOREVER,&searchAncore,&ts,true);
 Task handle_message_queaue(100,TASK_FOREVER,&handle_queaue,&ts,true);
 Task handle_message_ack_queaue(20000,TASK_FOREVER,&handle_ack,&ts,true);
@@ -49,11 +49,11 @@ void handle_queaue(){
   if(messaggi_in_arrivo.size()==0){
     return;
   }
-  Serial.println("Handling queaue");
+  //Serial.println("Handling queaue");
   char* incoming=messaggi_in_arrivo.front();
   messaggi_in_arrivo.pop_front();
     
-  Serial.println("Message received");
+  //Serial.println("Message received");
   struct_message* current=new struct_message;
   memcpy(current, incoming, sizeof(struct_message));
 
@@ -65,9 +65,9 @@ void handle_queaue(){
     if(String(current->type)=="ACK"){
       for (std::list<struct_message*>::iterator it = messages_send.begin(); it != messages_send.end(); ++it){
         if(String((*it)->messageCount)==String(current->text)){
-          Serial.println("ACK eliminato");
+          //Serial.println("ACK eliminato");
           //elimina it da messages_send
-          Serial.println((*it)->messageCount);
+          //Serial.println((*it)->messageCount);
           messages_send.erase(it);
           break;
         }
@@ -76,7 +76,9 @@ void handle_queaue(){
     else if(String(current->type)=="MSG_to_bracelet"){
       //scrivere come inviare un messaggio per i braccialetti
       //e gestire l'inoltro del messaggio se non conosco il destinatario
+      Serial.println("Messaggio per il braccialetto");
       msg_to_bracelet=String(current->text);
+      //Serial.println(msg_to_bracelet);
       ho_inviato_un_message=true;
     }
     else if(String(current->type)=="BraceletData"){
@@ -160,7 +162,7 @@ void handle_queaue(){
     }
       
     else{
-      Serial.println("Message not for me");
+      //Serial.println("Message not for me");
     }
   }
 
@@ -182,8 +184,8 @@ void handle_queaue(){
       memcpy(ack.touched, "0\0", 2);
       memcpy(ack.text, temp_msgCount.c_str(),temp_msgCount.length()+1);
       
-      Serial.println("ack source:"+String(ack.source));
-      Serial.println("current dest"+String(current->dest));
+      //Serial.println("ack source:"+String(ack.source));
+      //Serial.println("current dest"+String(current->dest));
       msgCount++;
       pref.putInt("msgCount",msgCount);
 
@@ -196,36 +198,36 @@ void handle_queaue(){
       }
       LoRa.endPacket();
       delay(500);
-      Serial.println("ACK sent");
+      //Serial.println("ACK sent");
       
     }
     
   free(current);
   free(incoming);
   LoRa.receive(); 
-  Serial.println(esp_get_free_heap_size());
+  //Serial.println(esp_get_free_heap_size());
 }
 
 
 void handle_ack(){
-  Serial.println("Handling ack");
+  //Serial.println("Handling ack");
   if(messages_send.size()==0){
-    Serial.println("No message to handle");
+    //Serial.println("No message to handle");
     return;
   }
   struct_message* current=messages_send.front();
   if(current->touched[0]=='1'){
-    Serial.println("Message touched");
+    //Serial.println("Message touched");
     messages_send.pop_front();
     free(current);
   }
   else{
     current->touched[0]='1';
-    Serial.println(current->messageCount);
-    Serial.println("Message not touched");
+    //Serial.println(current->messageCount);
+    //Serial.println("Message not touched");
   }
 
-  Serial.println(esp_get_free_heap_size());
+  //Serial.println(esp_get_free_heap_size());
 }
 
 
@@ -263,10 +265,10 @@ String remote_mac_prec_str = "FF:FF:FF:FF:FF:FF";
 
 void sendBLE(){
   if(!data_ready){
-    Serial.println("No data to send");
+    //Serial.println("No data to send");
     return;
   }
-  Serial.println("Sending BLE");
+  //Serial.println("Sending BLE");
   String BLEmessage;
   serializeJson(MacAddress, BLEmessage);
 
@@ -323,7 +325,6 @@ void readBLE(){
       BLERemoteService* pRemoteService = pClient->getService(SERVICE_UUID_bracelet);
       if(pRemoteService==nullptr){
         Serial.println("service 1 not found");
-        Serial.println("service 1 not found");
         continue;
       }
 
@@ -351,10 +352,12 @@ void readBLE(){
           String temp = msg_to_bracelet.substring(index1+2,index2);
           if(msg_to_bracelet.indexOf("FF:FF:FF:FF:FF:FF")!=-1){
             //qui ci vorrebbe una riga per prendere solo il messaggio e non tutto il json
+            Serial.println(String(temp).c_str());
             pRunCharacteristic->writeValue(temp.c_str());
           }
           if(msg_to_bracelet.indexOf(peripheral.getAddress().toString().c_str())!=-1){
             //qui ci vorrebbe una riga per prendere solo il messaggio e non tutto il json
+            Serial.println(String(temp).c_str());
             pRunCharacteristic->writeValue(temp.c_str());
             msg_to_bracelet="0";
           }
@@ -362,10 +365,10 @@ void readBLE(){
       }
 
       char buffer[100];
-      snprintf(buffer, sizeof(buffer), "{%s,%s,%s,%s,%s,%s}", 
-        temperature.c_str(), saturation.c_str(), heartbeat.c_str(), colesterol.c_str(), sugar.c_str(), dead.c_str());
-      snprintf(buffer, sizeof(buffer), "{%s,%s,%s,%s,%s,%s}", 
-        temperature.c_str(), saturation.c_str(), heartbeat.c_str(), colesterol.c_str(), sugar.c_str(), dead.c_str());
+      snprintf(buffer, sizeof(buffer), "{%s,%s,%s,%s,%s,%s,%d}", 
+        temperature.c_str(), saturation.c_str(), heartbeat.c_str(), colesterol.c_str(), sugar.c_str(), dead.c_str(), peripheral.getRSSI());
+      snprintf(buffer, sizeof(buffer), "{%s,%s,%s,%s,%s,%s,%d}", 
+        temperature.c_str(), saturation.c_str(), heartbeat.c_str(), colesterol.c_str(), sugar.c_str(), dead.c_str(), peripheral.getRSSI());
         
       MacAddress[String(peripheral.getAddress().toString().c_str())]=buffer;
       pClient->disconnect();

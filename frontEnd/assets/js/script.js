@@ -1,4 +1,4 @@
-let ip = "192.168.113.129:5000";
+let ip = "localhost:5000";
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
@@ -48,24 +48,88 @@ function createListItem(nome, cognome, id){
 
     li.addEventListener('click', function(){
         let cards = document.querySelectorAll('.right > .card');
-
+        let userSelected = users[id-1];
         cards.forEach(function(card){
             card.style.display = "flex";
             if (card.classList[1] == undefined ) card.classList.add(id);
             else card.classList.replace(card.classList[1], id);
             let infos = card.querySelectorAll('.info');
-            let userSelected = users[id-1];
+            
             infos[0].innerHTML = userSelected.nome + " " + userSelected.cognome + "   " + userSelected.eta + " anni";
             infos[1].innerHTML = userSelected.task;
             infos[2].innerHTML = userSelected.info;
         
         });
-        document.querySelectorAll('.subInfo > .info').forEach(function(info){
-            info.style.display = "none";
-        });
+        console.log(userSelected.mac)
+        if (userSelected.mac == ''){
+            document.querySelectorAll('.subInfo > .info').forEach(function(info){
+                info.style.display = "none";
+            });
+            document.querySelector('.missionStatus').style.display = "flex";
+            document.querySelector('input[name = "macAddress"]').style.display = "flex";
+            document.querySelector('.confirmMission').style.display = "flex";
+        }
+        else {
+            document.querySelector('.missionStatus').style.display = "none";
+            document.querySelector('input[name = "macAddress"]').style.display = "none";
+            document.querySelector('.confirmMission').style.display = "none";
+            document.querySelectorAll('.subInfo > .info').forEach(function(info){
+                info.style.display = "flex";
+            });
+            
+        }
         document.querySelector('.right > .placeholderRight').style.display = "none";
+        document.querySelector('.cardPerm').style.display = "flex";
+        let selector = document.querySelector('#dest');
+        users.forEach(function(user){
+            let option = document.createElement('option');
+            option.innerHTML = user.nome + " " + user.cognome;
+            option.value = user.id;
+            selector.add(option);
+        });
     });
 }
+
+document.querySelector('.sendMsg').addEventListener('click', function(){
+    let dest = document.querySelector('select').value;
+    console.log(dest);
+    let msg = document.querySelector('input[name = "text"]').value;
+    let toSend = {
+        "msg" : { },
+        "dest" : ""
+    }
+    users.forEach(function(user){
+        if (user.id == dest) {
+            toSend.msg[user.mac] = msg;
+        }
+    });
+
+    datas.forEach(function(data){
+        console.log(data.mac);
+        if (data.id == dest){
+            toSend.dest = data.anchor;
+        }
+    });
+let url = 'http://' + ip + '/send_msg';
+console.log(toSend);
+fetch(url, {
+    method: 'POST',
+    body: JSON.stringify(toSend),
+    headers: {
+        'Content-Type': 'application/json'
+    }
+})
+.then(response => console.log(response))
+.then(data => {
+   console.log('Success:', data);
+})
+.catch(error => {
+    // handle error
+});
+    
+    console.log(dest);
+    console.log(msg);
+});
 
 document.querySelector('.confirmMission').addEventListener('click', function(){
     let mac = document.querySelector('input[name = "macAddress"]')?.value;
@@ -254,6 +318,7 @@ function getWorkers(url) {
       .catch(error => {
           console.log('Error:', error);
       });
+
 }
 
 var users = [];
@@ -332,8 +397,9 @@ document.querySelector('.zoomOut').addEventListener('click', function(){
     precZoom.pop();
 });
 
-
 function zoomIntoMap(mapSection){
+    saveDots();
+
     unlockZoom();
     let preczoom = {
         "tLen" : 0,
@@ -390,16 +456,285 @@ function zoomIntoMap(mapSection){
                 precZoom.push(preczoom);
                 createMap(sectionToDisplay, Number(zoomedTunnelLen) / Number(sectionToDisplay));
             }
-        
         }, 1000);
     }, 500);
 }
 
+let saves = [];
+function saveDots(){
+    console.log("saving");
+    saves = [];
+
+    for (var section of mapSections){
+        let save = {
+            "connected" : [],
+            "dots" : 0,
+            "anchors" : []
+        }
+        save.connected = section.connectedId;
+        save.dots = section.dotNum;
+        for (var data of datas){
+            if (save.connected.includes(data.id)){
+                save.anchors.push(data.anchor);
+            }
+        }
+        saves.push(save);
+    }
+    
+    console.log(saves);
+    mapSections = [];
+    
+}
+
+function handleWhois(index){
+        var section = {};
+        for (var el of mapSections){
+            if (el.id == index) {
+                section = el;
+            }
+        }
+
+        let actualDisp = document.querySelectorAll('.whoisDisp');
+        if (actualDisp != null) for (var disp of actualDisp) disp.remove();
+        for (var id of section.connectedId){
+            let toDisp = document.createElement('div');
+            toDisp.classList.add('whoisDisp');
+            for (var user of users){
+                if (user.id == id) 
+                for (var data of datas){
+                    if (data.id == id){ 
+                        toDisp.innerHTML = String(user.nome) + " " + String(user.cognome) + " " + String(data.anchor);
+                    }
+                }
+            }
+            document.querySelector('.whois').appendChild(toDisp);
+        }
+    
+
+    
+}
+
+function handleDots(anchor, id){
+    var section = -1;
+    for (var el of mapSections){
+    
+        if (el.connectedId.includes(id)) {
+            console.log("section " + el.id + " has connected id's: "+ el.connectedId);
+            console.log("dotnum: " + el.dotNum);
+            el.connectedId.splice(el.connectedId.indexOf(id), '1')
+            el.dotNum--;
+
+            console.log("section " + el.id + " has connected id's: "+ el.connectedId);
+            console.log("dotnum: " + el.dotNum);
+        };
+    
+}
+
+
+    for (var i in mapSections){
+        if ( anchor >= mapSections[i].anchorL && anchor < mapSections[i].anchorR){
+            mapSections[i].connectedId.push(id);
+            mapSections[i].dotNum++;
+        }
+    }
+
+    for (var section of mapSections){
+        console.log("dotnumber: " + section.dotNum);
+         
+        for (var i = 0; i < section.connectedId.length; i++){
+            let indexToCheck = section.connectedId[i]
+            for (var data of datas){
+                if (data.id == indexToCheck && data.dead == "1" && section.redIds.includes(indexToCheck) == false){
+                    section.redDot++;
+                    section.redIds.push(indexToCheck);
+                }
+                else if (data.id == indexToCheck && data.dead == "0" && section.redDot > 0 && section.redIds.includes(indexToCheck) == true){
+                    section.redDot--;
+                    section.redIds.splice(section.redIds.indexOf(indexToCheck), 1);
+                }
+                console.log("redDot: " + section.redDot);
+            }
+        }
+
+        let dots = section.section.querySelectorAll('.dot');
+        let shadows = section.section.querySelectorAll('.dotShadow');
+        if (section.dotNum > 0 && section.dotNum <= 5){
+            section.section.querySelector('.biggerDot')?.classList.add('dotDisplay');
+            section.section.querySelector('.biggerDot')?.classList.remove('biggerDot');
+            
+            if (section.dotNum == 1) {
+                dots[4].classList.add('visible');
+                dots[1].classList.remove('visible');
+                dots[3].classList.remove('visible');
+                dots[5].classList.remove('visible');
+                dots[7].classList.remove('visible');
+
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+            }
+            else if (section.dotNum == 2) {
+                dots[4].classList.add('visible');
+                dots[1].classList.add('visible');
+                dots[3].classList.remove('visible');
+                dots[5].classList.remove('visible');
+                dots[7].classList.remove('visible');
+
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[1].style.backgroundColor = "rgb(0, 255, 0)";
+
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[1].style.backgroundColor = "rgb(0, 255, 0)";
+            }
+            else if (section.dotNum == 3){
+                
+                dots[4].classList.add('visible');
+                dots[1].classList.add('visible');
+                dots[3].classList.add('visible');
+                dots[5].classList.remove('visible');
+                dots[7].classList.remove('visible');
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[1].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[3].style.backgroundColor = "rgb(0, 255, 0)";
+
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[1].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[3].style.backgroundColor = "rgb(0, 255, 0)";
+
+            } 
+            else if (section.dotNum == 4) {
+                dots[4].classList.add('visible');
+                dots[1].classList.add('visible');
+                dots[3].classList.add('visible');
+                dots[5].classList.add('visible');
+                dots[7].classList.remove('visible');
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[1].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[3].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[5].style.backgroundColor = "rgb(0, 255, 0)";
+                
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[1].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[3].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[5].style.backgroundColor = "rgb(0, 255, 0)";
+            }
+            else if (section.dotNum == 5) {
+                
+                dots[4].classList.add('visible');
+                dots[1].classList.add('visible');
+                dots[3].classList.add('visible');
+                dots[5].classList.add('visible');
+                dots[7].classList.add('visible');
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[1].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[3].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[5].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[7].style.backgroundColor = "rgb(0, 255, 0)";
+
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[1].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[3].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[5].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[7].style.backgroundColor = "rgb(0, 255, 0)";
+            }
+            else{console.log()}
+
+            if (section.redDot == 1) {
+                console.log("redDot: " + section.redDot);
+                dots[4].style.backgroundColor = "red";
+
+                shadows[4].style.backgroundColor = "red";
+            }
+            else if (section.redDot == 2) {
+                dots[4].style.backgroundColor = "red";
+                dots[1].style.backgroundColor = "red";
+
+                shadows[4].style.backgroundColor = "red";
+                shadows[1].style.backgroundColor = "red";
+            }
+            else if (section.redDot == 3){
+                dots[4].style.backgroundColor = "red";
+                dots[1].style.backgroundColor = "red";
+                dots[3].style.backgroundColor = "red";
+
+                shadows[4].style.backgroundColor = "red";
+                shadows[1].style.backgroundColor = "red";
+                shadows[3].style.backgroundColor = "red";
+            } 
+            else if (section.redDot == 4) {
+                dots[4].style.backgroundColor = "red";
+                dots[1].style.backgroundColor = "red";
+                dots[3].style.backgroundColor = "red";
+                dots[5].style.backgroundColor = "red";
+                
+                shadows[4].style.backgroundColor = "red";
+                shadows[1].style.backgroundColor = "red";
+                shadows[3].style.backgroundColor = "red";
+                shadows[5].style.backgroundColor = "red";
+            }
+            else if (section.redDot == 5) {
+                dots[4].style.backgroundColor = "red";
+                dots[1].style.backgroundColor = "red";
+                dots[3].style.backgroundColor = "red";
+                dots[5].style.backgroundColor = "red";
+                dots[7].style.backgroundColor = "red";
+
+                shadows[4].style.backgroundColor = "red";
+                shadows[1].style.backgroundColor = "red";
+                shadows[3].style.backgroundColor = "red";
+                shadows[5].style.backgroundColor = "red";
+                shadows[7].style.backgroundColor = "red";
+            }
+            else {console.log()}
+        }
+        else if (section.dotNum == 0){
+            dots.forEach(function(el){
+                el.classList.remove('visible')
+            })
+        }
+        else{
+            section.section.querySelector('.dotDisplay')?.classList.add('biggerDot');
+            section.section.querySelector('.dotDisplay')?.classList.remove('dotDisplay');
+            section.section.querySelectorAll('.dot')?.forEach(function(dot){
+                dot.classList.remove('visible');
+            });
+            if (redDot > 1) section.section.querySelector('.biggerDot').style.backgroundColor = "red";
+        }
+    }
+
+}
 
 function mapGen(map, segNum, segLen){
 
     let mapSection = document.createElement('div');
     mapSection.classList.add('mapSection');
+
+    let whois = document.querySelector('.whois');
+    // whois.classList.add('whois');
+    // mapSection.appendChild(whois);
+    
+
+    let div = document.createElement('div');
+    div.classList.add('dotDisplay');
+    for (let i = 0; i < 9; i++){
+        let dot = document.createElement('div');
+        let shadow = document.createElement('div');
+        dot.classList.add('dot');
+        dot.classList.add( i );
+        shadow.classList.add('dotShadow');
+        shadow.classList.add( i );
+        
+        div.appendChild(dot);
+        dot.appendChild(shadow);
+        // setTimeout(function(){
+        //     dot.classList.toggle('dot');
+        //     dot.classList.toggle('biggerDot');
+        //     let bigShadow = document.createElement('div');
+        //     bigShadow.classList.add('biggerDotShadow');
+        //     dot.appendChild(bigShadow);
+        // }, 1000);
+    }
+    mapSection.appendChild(div);
     
     // il segmento che stiamo rappresentando diviso il numero di sottosegmenti
     mapSection.classList.add(i * (segLen) + offset);
@@ -410,11 +745,7 @@ function mapGen(map, segNum, segLen){
     if (sectionToDisplay >= 16) mapSection.classList.add('hoverable');
     
 
-    let mapSectionsItem = {
-        "id" : i+1,
-        "section" : mapSection
-    };
-    mapSections.push(mapSectionsItem);
+   
     
     let placeholder = document.createElement('div');
     placeholder.classList.add('doubleAnchor');
@@ -439,10 +770,6 @@ function mapGen(map, segNum, segLen){
         infos.classList.remove('hovered');
     });
 
-    
-    
-
-
     anchorL.appendChild(infos);
     placeholder.appendChild(anchorL);
 
@@ -459,17 +786,30 @@ function mapGen(map, segNum, segLen){
     anchors.push(anchorL);
     anchors.push(anchorR);
 
+    let mapSectionsItem = {
+        "id" : i+1,
+        "section" : mapSection,
+        "anchorL" : Number(infos.innerHTML),
+        "anchorR" : Math.ceil((segLen * (i+1) + offset) / anchorDistance),
+        "dotNum" : 0,
+        "connectedId" : [],
+        "redDot" : 0,
+        "redIds" : []
+    }
+    
     if (i == 0){
         anchorL.classList.remove('anchor');
         anchorL.classList.add('firstAnchor');
         infos.innerHTML = Math.ceil(offset / anchorDistance);
+        mapSectionsItem.anchorL = Math.ceil(offset / anchorDistance);
     }
     if (i == segNum - 1){
         anchorR.classList.remove('anchor');
         anchorR.classList.add('lastAnchor');
         let infos = document.createElement('div');
         infos.classList.add('anchorInfosLast');
-        infos.innerHTML = Math.ceil((segLen * (i+1) + offset) / anchorDistance);
+        if (segLen * segNum == tunnelLen) infos.innerHTML = Math.ceil((segLen * (i+1) + offset) / anchorDistance) + 1;
+        else infos.innerHTML = Math.ceil((segLen * (i+1) + offset) / anchorDistance);
         anchorR.appendChild(infos);
 
         anchorR.addEventListener('mouseover', function(e){
@@ -482,10 +822,14 @@ function mapGen(map, segNum, segLen){
             e.stopPropagation();
             infos.classList.remove('hovered');
         });
+
+        mapSectionsItem.anchorR = Number(infos.innerHTML);
     }
     i++;
+    console.log(mapSections);
+    mapSections.push(mapSectionsItem);
         
-
+    
     // se 8 no zoom 16 zoom 24 2 zoom 
     if (sectionToDisplay >= 16) {
         mapSection.addEventListener('click', function(e){
@@ -493,10 +837,36 @@ function mapGen(map, segNum, segLen){
             zoomIntoMap(mapSection);
         });
     }
-
+    mapSection.addEventListener('mouseover', function(e){
+        e.stopPropagation();
+        handleWhois(mapSectionsItem.id);
+        for (var el of mapSections){
+            if (el.id == mapSectionsItem.id && el.dotNum > 0) {
+                whois.style.opacity = "1";
+            }
+        }
+        
+        console.log('hover')
+        
+    });
+    mapSection.addEventListener('mouseout', function(e){
+        e.stopPropagation();
+        whois.style.opacity = "0";
+    });
     map.appendChild(mapSection);
         if (i < segNum) mapGen(map, segNum, segLen);
-        else {mapDraw();}
+        else {
+            mapDraw();
+            setTimeout(function(){
+                if (saves.length > 0) {
+                    saves.forEach(function(save){
+                        save.connected.forEach(function(id){
+                            handleDots(save.anchors[0], id);
+                        });
+                    });
+                }
+            }, 500);
+        }
     }
 
 function mapDraw(){
@@ -713,10 +1083,99 @@ socket.onopen = function(e) {
     socket.send(["Hello"]);
     console.log("[open] ciao");
 };
-
+var datas = [];
 socket.onmessage = function(event) {
     console.log(`[message] Data received from server: ${event.data}`);
+    let data = JSON.parse(event.data);
+    let id = data["id"];
+    let mac = data["mac_dispositivo"];
+    let sens = data["sensor_data"];
+    let anchor = data["sensor_id"]
+    console.log(anchor);
+    sens = sens.split("{")[1];
+    sens = sens.split("}")[0];
+    sens = sens.split(",");
+
+    let newData = {
+        "id" : id,
+        "mac" : mac,
+        "temp" : sens[0],
+        "sat" : sens[1],
+        "hb" : sens[2],
+        "col" : sens[3],
+        "sugar" : sens[4],
+        "dead" : sens[5],
+        "anchor" : anchor
+    } 
+
+    if (datas.length == 0) datas.push(newData);
+    else {
+        for (var i in datas){
+            if (datas[i].id == id && datas[i].anchor == anchor){
+                datas[i] = newData;
+            }
+            else if(datas[i].id == id && datas[i].anchor != anchor ){
+                datas.push(newData);
+               
+            }
+
+            else if (i == datas.length - 1){
+                datas.push(newData);
+            }
+        }
+    }
+
+    refreshStats();
+    handleDots(anchor, id);
 };
+
+function refreshStats(){
+    let card = document.querySelector('.card');
+    let style = window.getComputedStyle(card);
+    var data;
+    if (style.display != "none") {
+        let index = Number(card.classList[1]);
+        for (var i in datas) {
+            if (datas[i].id == index) {
+                data = datas[i];
+            }
+        }
+        let tempVal = document.querySelector('.TPvalue');
+        tempVal.innerHTML = data.temp;
+
+        let hbVal = document.querySelector('.HRvalue');
+        hbVal.innerHTML = data.hb;
+
+        let satVal = document.querySelector('.O2value');
+        satVal.innerHTML = data.sat;
+
+        let colVal = document.querySelector('.COLvalue');
+        colVal.innerHTML = data.col;
+
+        let sugarVal = document.querySelector('.SUvalue');
+        sugarVal.innerHTML = data.sugar;
+        
+    }
+    deathAlert();
+}
+
+function deathAlert(){
+    for (var el of document.querySelectorAll('.listItem')){
+        for (var data of datas){
+            if (el.classList[1] == data.id && data.dead == 1){
+                el.querySelector('.statusPlaceholder').innerHTML = "Status: Warning";
+                el.querySelectorAll('.statusIcon > svg > path')[0].style.stroke = "red";
+                el.querySelectorAll('.statusIcon > svg > path')[1].style.fill = "red";
+            }
+            else if (el.classList[1] == data.id && data.dead == 0){
+                el.querySelector('.statusPlaceholder').innerHTML = "Status: Ok";
+                el.querySelectorAll('.statusIcon > svg > path')[0].style.stroke = "green";
+                el.querySelectorAll('.statusIcon > svg > path')[1].style.fill = "green";
+            }
+        }
+    }
+}
+
 
 function putMacAddress(url, data) {
     fetch(url, {
@@ -738,3 +1197,48 @@ function putMacAddress(url, data) {
 }
 
 
+setInterval(function(){
+    generator();
+}, 3000);
+function generator(){
+    let id = Math.floor(Math.random() * 1) + 1;
+    let mac = Math.floor(Math.random() * 100000);
+    let temp = Math.floor(Math.random() * 100);
+    let sat = Math.floor(Math.random() * 100);
+    let hb = Math.floor(Math.random() * 100);
+    let col = Math.floor(Math.random() * 100);
+    let sugar = Math.floor(Math.random() * 100);
+    let dead = Math.floor(Math.random() * 2);
+    let anchor = Math.floor(Math.random() * 100) + 1;
+
+    let newData = {
+        "id" : id,
+        "mac" : mac,
+        "temp" : temp,
+        "sat" : sat,
+        "hb" : hb,
+        "col" : col,
+        "sugar" : sugar,
+        "dead" : dead,
+        "anchor" : anchor
+    } 
+    console.log(newData)
+
+    if (datas.length == 0) datas.push(newData);
+    else {
+        for (var i in datas){
+            if (datas[i].id == id){
+                datas[i] = newData;
+                break;
+            }
+            else if (i == datas.length - 1){
+                datas.push(newData);
+            }
+        }
+        
+        console.log(datas);
+    }
+
+    refreshStats();
+    handleDots(anchor, id);
+}
