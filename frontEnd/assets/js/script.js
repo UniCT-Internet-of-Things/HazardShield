@@ -1,4 +1,4 @@
-let ip = "localhost:5000";
+let ip = "151.97.147.236:5000";
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
@@ -1155,11 +1155,48 @@ function refreshStats(){
         let sugarVal = document.querySelector('.SUvalue');
         sugarVal.innerHTML = data.sugar;
         
+        let aVal = document.querySelectorAll('.mainInfo > div >.info')[2].innerHTML = "Ancora: " + data.anchor;
+
+        let meters = 0;
+        meters = Number(data.anchor * Number(anchorDistance)).toPrecision(3);
+        document.querySelectorAll('.mainInfo > div > .info')[3].innerHTML = "Posizione: (" + Number(meters - anchorDistance) + "m, " + Number(meters + anchorDistance) + "m)"; 
     }
     deathAlert();
 }
 
 function deathAlert(){
+    let listItem = document.querySelectorAll('.listItem');
+    listItem.forEach(function(item){ item.remove(); });
+
+    for (var user of users){
+        for (var data of datas){
+            if (user.id == data.id && data.dead == 1){
+                createListItem(user.nome, user.cognome, user.id);
+            }
+        }
+    }
+
+    for (var user of users){
+        for (var data of datas){
+            if (user.id == data.id && data.dead == 0){
+                createListItem(user.nome, user.cognome, user.id);
+            }
+        }
+    }
+
+    for (var user of users){
+        let bool = 0;
+        for (var data of datas){
+            if (user.id == data.id && data.dead == 1){
+                bool = 1;
+            }
+            if (user.id == data.id && data.dead == 0){
+                bool = 1;
+            }
+        }
+        if (bool == 0) createListItem(user.nome, user.cognome, user.id);
+    }
+
     for (var el of document.querySelectorAll('.listItem')){
         for (var data of datas){
             if (el.classList[1] == data.id && data.dead == 1){
@@ -1174,7 +1211,11 @@ function deathAlert(){
             }
         }
     }
+
+
+    
 }
+
 
 
 function putMacAddress(url, data) {
@@ -1201,7 +1242,7 @@ setInterval(function(){
     generator();
 }, 3000);
 function generator(){
-    let id = Math.floor(Math.random() * 1) + 1;
+    let id = Math.floor(Math.random() * 3) + 1;
     let mac = Math.floor(Math.random() * 100000);
     let temp = Math.floor(Math.random() * 100);
     let sat = Math.floor(Math.random() * 100);
