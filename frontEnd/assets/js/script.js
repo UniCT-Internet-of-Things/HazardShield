@@ -1,4 +1,4 @@
-let ip = "192.168.70.18:5000";
+let ip = "localhost:5000";
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
@@ -76,6 +76,7 @@ function createListItem(nome, cognome, id){
             document.querySelectorAll('.subInfo > .info').forEach(function(info){
                 info.style.display = "flex";
             });
+            
         }
         document.querySelector('.right > .placeholderRight').style.display = "none";
         document.querySelector('.cardPerm').style.display = "flex";
@@ -397,6 +398,8 @@ document.querySelector('.zoomOut').addEventListener('click', function(){
 });
 
 function zoomIntoMap(mapSection){
+    saveDots();
+
     unlockZoom();
     let preczoom = {
         "tLen" : 0,
@@ -453,18 +456,68 @@ function zoomIntoMap(mapSection){
                 precZoom.push(preczoom);
                 createMap(sectionToDisplay, Number(zoomedTunnelLen) / Number(sectionToDisplay));
             }
-        
         }, 1000);
     }, 500);
 }
 
+let saves = [];
+function saveDots(){
+    console.log("saving");
+    saves = [];
+
+    for (var section of mapSections){
+        let save = {
+            "connected" : [],
+            "dots" : 0,
+            "anchors" : []
+        }
+        save.connected = section.connectedId;
+        save.dots = section.dotNum;
+        for (var data of datas){
+            if (save.connected.includes(data.id)){
+                save.anchors.push(data.anchor);
+            }
+        }
+        saves.push(save);
+    }
+    
+    console.log(saves);
+    mapSections = [];
+    
+}
+
+function handleWhois(index){
+        var section = {};
+        for (var el of mapSections){
+            if (el.id == index) {
+                section = el;
+            }
+        }
+
+        let actualDisp = document.querySelectorAll('.whoisDisp');
+        if (actualDisp != null) for (var disp of actualDisp) disp.remove();
+        for (var id of section.connectedId){
+            let toDisp = document.createElement('div');
+            toDisp.classList.add('whoisDisp');
+            for (var user of users){
+                if (user.id == id) 
+                for (var data of datas){
+                    if (data.id == id){ 
+                        toDisp.innerHTML = String(user.nome) + " " + String(user.cognome) + " " + String(data.anchor);
+                    }
+                }
+            }
+            document.querySelector('.whois').appendChild(toDisp);
+        }
+    
+
+    
+}
 
 function handleDots(anchor, id){
     var section = -1;
-    console.log("anchor: " + anchor);
-    console.log("id: " + id)
-
-    mapSections.forEach(function(el){
+    for (var el of mapSections){
+    
         if (el.connectedId.includes(id)) {
             console.log("section " + el.id + " has connected id's: "+ el.connectedId);
             console.log("dotnum: " + el.dotNum);
@@ -474,40 +527,164 @@ function handleDots(anchor, id){
             console.log("section " + el.id + " has connected id's: "+ el.connectedId);
             console.log("dotnum: " + el.dotNum);
         };
-    })
+    
+}
 
 
     for (var i in mapSections){
         if ( anchor >= mapSections[i].anchorL && anchor < mapSections[i].anchorR){
-            if (mapSections[i].connectedId.includes(id) == false) {
-                console.log("here")
-                mapSections[i].connectedId.push(id);
-                mapSections[i].dotNum++;
-                section = i;
-                }
+            mapSections[i].connectedId.push(id);
+            mapSections[i].dotNum++;
         }
-        else {
-            // for (var i in mapSections){
-            //     console.log(section)
-            //     if (i != section && mapSections[i].connectedId.includes(id) == true)
-            //     mapSections[i].connectedId.splice(mapSections[i].connectedId.indexOf(id), 1);
-            //     mapSections[i].dotNum--;
-            // }
-        }
-        
-        
     }
-    mapSections.forEach(function(section){
+
+    for (var section of mapSections){
         console.log("dotnumber: " + section.dotNum);
+         
+        for (var i = 0; i < section.connectedId.length; i++){
+            let indexToCheck = section.connectedId[i]
+            for (var data of datas){
+                if (data.id == indexToCheck && data.dead == "1" && section.redIds.includes(indexToCheck) == false){
+                    section.redDot++;
+                    section.redIds.push(indexToCheck);
+                }
+                else if (data.id == indexToCheck && data.dead == "0" && section.redDot > 0 && section.redIds.includes(indexToCheck) == true){
+                    section.redDot--;
+                    section.redIds.splice(section.redIds.indexOf(indexToCheck), 1);
+                }
+                console.log("redDot: " + section.redDot);
+            }
+        }
+
         let dots = section.section.querySelectorAll('.dot');
+        let shadows = section.section.querySelectorAll('.dotShadow');
         if (section.dotNum > 0 && section.dotNum <= 5){
+            section.section.querySelector('.biggerDot')?.classList.add('dotDisplay');
+            section.section.querySelector('.biggerDot')?.classList.remove('biggerDot');
             
-           
-            if (section.dotNum == 1) dots[4].classList.add('visible');
-            else if (section.dotNum == 2) dots[1].classList.add('visible');
-            else if (section.dotNum == 3) dots[3].classList.add('visible');
-            else if (section.dotNum == 4) dots[5].classList.add('visible');
-            else if (section.dotNum == 5) dots[7].classList.add('visible');
+            if (section.dotNum == 1) {
+                dots[4].classList.add('visible');
+                dots[1].classList.remove('visible');
+                dots[3].classList.remove('visible');
+                dots[5].classList.remove('visible');
+                dots[7].classList.remove('visible');
+
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+            }
+            else if (section.dotNum == 2) {
+                dots[4].classList.add('visible');
+                dots[1].classList.add('visible');
+                dots[3].classList.remove('visible');
+                dots[5].classList.remove('visible');
+                dots[7].classList.remove('visible');
+
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[1].style.backgroundColor = "rgb(0, 255, 0)";
+
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[1].style.backgroundColor = "rgb(0, 255, 0)";
+            }
+            else if (section.dotNum == 3){
+                
+                dots[4].classList.add('visible');
+                dots[1].classList.add('visible');
+                dots[3].classList.add('visible');
+                dots[5].classList.remove('visible');
+                dots[7].classList.remove('visible');
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[1].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[3].style.backgroundColor = "rgb(0, 255, 0)";
+
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[1].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[3].style.backgroundColor = "rgb(0, 255, 0)";
+
+            } 
+            else if (section.dotNum == 4) {
+                dots[4].classList.add('visible');
+                dots[1].classList.add('visible');
+                dots[3].classList.add('visible');
+                dots[5].classList.add('visible');
+                dots[7].classList.remove('visible');
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[1].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[3].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[5].style.backgroundColor = "rgb(0, 255, 0)";
+                
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[1].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[3].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[5].style.backgroundColor = "rgb(0, 255, 0)";
+            }
+            else if (section.dotNum == 5) {
+                
+                dots[4].classList.add('visible');
+                dots[1].classList.add('visible');
+                dots[3].classList.add('visible');
+                dots[5].classList.add('visible');
+                dots[7].classList.add('visible');
+                dots[4].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[1].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[3].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[5].style.backgroundColor = "rgb(0, 255, 0)";
+                dots[7].style.backgroundColor = "rgb(0, 255, 0)";
+
+                shadows[4].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[1].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[3].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[5].style.backgroundColor = "rgb(0, 255, 0)";
+                shadows[7].style.backgroundColor = "rgb(0, 255, 0)";
+            }
+            else{console.log()}
+
+            if (section.redDot == 1) {
+                console.log("redDot: " + section.redDot);
+                dots[4].style.backgroundColor = "red";
+
+                shadows[4].style.backgroundColor = "red";
+            }
+            else if (section.redDot == 2) {
+                dots[4].style.backgroundColor = "red";
+                dots[1].style.backgroundColor = "red";
+
+                shadows[4].style.backgroundColor = "red";
+                shadows[1].style.backgroundColor = "red";
+            }
+            else if (section.redDot == 3){
+                dots[4].style.backgroundColor = "red";
+                dots[1].style.backgroundColor = "red";
+                dots[3].style.backgroundColor = "red";
+
+                shadows[4].style.backgroundColor = "red";
+                shadows[1].style.backgroundColor = "red";
+                shadows[3].style.backgroundColor = "red";
+            } 
+            else if (section.redDot == 4) {
+                dots[4].style.backgroundColor = "red";
+                dots[1].style.backgroundColor = "red";
+                dots[3].style.backgroundColor = "red";
+                dots[5].style.backgroundColor = "red";
+                
+                shadows[4].style.backgroundColor = "red";
+                shadows[1].style.backgroundColor = "red";
+                shadows[3].style.backgroundColor = "red";
+                shadows[5].style.backgroundColor = "red";
+            }
+            else if (section.redDot == 5) {
+                dots[4].style.backgroundColor = "red";
+                dots[1].style.backgroundColor = "red";
+                dots[3].style.backgroundColor = "red";
+                dots[5].style.backgroundColor = "red";
+                dots[7].style.backgroundColor = "red";
+
+                shadows[4].style.backgroundColor = "red";
+                shadows[1].style.backgroundColor = "red";
+                shadows[3].style.backgroundColor = "red";
+                shadows[5].style.backgroundColor = "red";
+                shadows[7].style.backgroundColor = "red";
+            }
             else {console.log()}
         }
         else if (section.dotNum == 0){
@@ -515,13 +692,27 @@ function handleDots(anchor, id){
                 el.classList.remove('visible')
             })
         }
-    });
-    
+        else{
+            section.section.querySelector('.dotDisplay')?.classList.add('biggerDot');
+            section.section.querySelector('.dotDisplay')?.classList.remove('dotDisplay');
+            section.section.querySelectorAll('.dot')?.forEach(function(dot){
+                dot.classList.remove('visible');
+            });
+            if (redDot > 1) section.section.querySelector('.biggerDot').style.backgroundColor = "red";
+        }
+    }
+
 }
+
 function mapGen(map, segNum, segLen){
 
     let mapSection = document.createElement('div');
     mapSection.classList.add('mapSection');
+
+    let whois = document.querySelector('.whois');
+    // whois.classList.add('whois');
+    // mapSection.appendChild(whois);
+    
 
     let div = document.createElement('div');
     div.classList.add('dotDisplay');
@@ -601,8 +792,9 @@ function mapGen(map, segNum, segLen){
         "anchorL" : Number(infos.innerHTML),
         "anchorR" : Math.ceil((segLen * (i+1) + offset) / anchorDistance),
         "dotNum" : 0,
-        "connectedId" : []
-
+        "connectedId" : [],
+        "redDot" : 0,
+        "redIds" : []
     }
     
     if (i == 0){
@@ -645,10 +837,36 @@ function mapGen(map, segNum, segLen){
             zoomIntoMap(mapSection);
         });
     }
-
+    mapSection.addEventListener('mouseover', function(e){
+        e.stopPropagation();
+        handleWhois(mapSectionsItem.id);
+        for (var el of mapSections){
+            if (el.id == mapSectionsItem.id && el.dotNum > 0) {
+                whois.style.opacity = "1";
+            }
+        }
+        
+        console.log('hover')
+        
+    });
+    mapSection.addEventListener('mouseout', function(e){
+        e.stopPropagation();
+        whois.style.opacity = "0";
+    });
     map.appendChild(mapSection);
         if (i < segNum) mapGen(map, segNum, segLen);
-        else {mapDraw();}
+        else {
+            mapDraw();
+            setTimeout(function(){
+                if (saves.length > 0) {
+                    saves.forEach(function(save){
+                        save.connected.forEach(function(id){
+                            handleDots(save.anchors[0], id);
+                        });
+                    });
+                }
+            }, 500);
+        }
     }
 
 function mapDraw(){
@@ -911,13 +1129,10 @@ socket.onmessage = function(event) {
     handleDots(anchor, id);
 };
 
-setInterval(function(){
-    
-}, 10000);
-
 function refreshStats(){
     let card = document.querySelector('.card');
     let style = window.getComputedStyle(card);
+    var data;
     if (style.display != "none") {
         let index = Number(card.classList[1]);
         for (var i in datas) {
@@ -925,7 +1140,6 @@ function refreshStats(){
                 data = datas[i];
             }
         }
-        
         let tempVal = document.querySelector('.TPvalue');
         tempVal.innerHTML = data.temp;
 
@@ -934,10 +1148,28 @@ function refreshStats(){
 
         let satVal = document.querySelector('.O2value');
         satVal.innerHTML = data.sat;
+        
     }
-    
-    
+    deathAlert();
 }
+
+function deathAlert(){
+    for (var el of document.querySelectorAll('.listItem')){
+        for (var data of datas){
+            if (el.classList[1] == data.id && data.dead == 1){
+                el.querySelector('.statusPlaceholder').innerHTML = "Status: Warning";
+                el.querySelectorAll('.statusIcon > svg > path')[0].style.stroke = "red";
+                el.querySelectorAll('.statusIcon > svg > path')[1].style.fill = "red";
+            }
+            else if (el.classList[1] == data.id && data.dead == 0){
+                el.querySelector('.statusPlaceholder').innerHTML = "Status: Ok";
+                el.querySelectorAll('.statusIcon > svg > path')[0].style.stroke = "green";
+                el.querySelectorAll('.statusIcon > svg > path')[1].style.fill = "green";
+            }
+        }
+    }
+}
+
 
 function putMacAddress(url, data) {
     fetch(url, {
@@ -959,4 +1191,48 @@ function putMacAddress(url, data) {
 }
 
 
+setInterval(function(){
+    generator();
+}, 3000);
+function generator(){
+    let id = Math.floor(Math.random() * 1) + 1;
+    let mac = Math.floor(Math.random() * 100000);
+    let temp = Math.floor(Math.random() * 100);
+    let sat = Math.floor(Math.random() * 100);
+    let hb = Math.floor(Math.random() * 100);
+    let col = Math.floor(Math.random() * 100);
+    let sugar = Math.floor(Math.random() * 100);
+    let dead = Math.floor(Math.random() * 2);
+    let anchor = Math.floor(Math.random() * 100) + 1;
 
+    let newData = {
+        "id" : id,
+        "mac" : mac,
+        "temp" : temp,
+        "sat" : sat,
+        "hb" : hb,
+        "col" : col,
+        "sugar" : sugar,
+        "dead" : dead,
+        "anchor" : anchor
+    } 
+    console.log(newData)
+
+    if (datas.length == 0) datas.push(newData);
+    else {
+        for (var i in datas){
+            if (datas[i].id == id){
+                datas[i] = newData;
+                break;
+            }
+            else if (i == datas.length - 1){
+                datas.push(newData);
+            }
+        }
+        
+        console.log(datas);
+    }
+
+    refreshStats();
+    handleDots(anchor, id);
+}
