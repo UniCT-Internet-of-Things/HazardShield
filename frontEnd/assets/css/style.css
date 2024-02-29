@@ -369,16 +369,18 @@ body{
     justify-content: space-evenly;
     align-items: flex-start;
     padding-left: 25px;
-    height: 60%;
+    height: 50%;
     width: 100%;
 }
 
 .subInfo{
+    
     display: flex;
     flex-direction: row;
-    justify-content: center;
+    justify-content: space-evenly;
     align-items: center;
-    height: 40%;
+    flex-wrap: wrap;
+    height: 50%;
     width: 100%;
     gap: 10px;
 }
@@ -422,6 +424,10 @@ body{
     align-items: center;
     justify-content: center;
     
+    
+}
+.subInfo > .info{
+    width: 150px;
 }
 
 .HRicon
@@ -455,6 +461,26 @@ body{
     margin-left: 5px;
     margin-top: -5px;
 }
+.SUicon{
+   
+    height: 55px;
+    margin-top: -15px;
+ }
+ .SUvalue{
+    font-size: calc(15px + 0.5vh);
+     margin-left: 5px;
+     margin-top: -5px;
+ }
+ .COLicon{
+   
+    height: 55px;
+    margin-top: -15px;
+ }
+ .COLvalue{
+    font-size: calc(15px + 0.5vh);
+     margin-left: 5px;
+     margin-top: -5px;
+ }
 
 .footerCompressed{
     display: flex;
@@ -838,16 +864,6 @@ body{
 }
 
 
-
-.subInfo{
-    display: flex;
-    flex-direction: row;
-    justify-content: space-evenly;
-    align-items: center;
-    height: 30%;
-    width: 100%;
-    margin-top: 20px;
-}
 
 .info > span{
     font-size: calc(12px + 1vh);

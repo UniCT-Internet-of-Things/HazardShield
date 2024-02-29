@@ -1148,6 +1148,12 @@ function refreshStats(){
 
         let satVal = document.querySelector('.O2value');
         satVal.innerHTML = data.sat;
+
+        let colVal = document.querySelector('.COLvalue');
+        colVal.innerHTML = data.col;
+
+        let sugarVal = document.querySelector('.SUvalue');
+        sugarVal.innerHTML = data.sugar;
         
     }
     deathAlert();
