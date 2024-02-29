@@ -19,9 +19,9 @@
 #include <functions/function.cpp>
 
 //SSID of your network
-char ssid[] = "UniCT-Team";
+char ssid[] = "iPhone di Marco";
 //password of your WPA Network
-char pass[] = "LabROBO15/16";
+char pass[] = "tapop110";
 
 #define ss 18
 #define rst 23
@@ -53,7 +53,7 @@ extern BLEScan *pBLEScan;
 BLECharacteristic *pTemperatureCharacteristic;
 
 std::list<char*> messaggi_in_arrivo;
-String base_url="http://192.168.70.18:5000/";
+String base_url="http://151.97.147.236:5000/";
 std::list<struct_message*> messages_send;
 
 
