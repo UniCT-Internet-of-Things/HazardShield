@@ -5,12 +5,12 @@ La soluzione proposta dal nostro team consiste in un dispositivo mobile, dei dis
 I dispositivi utilizzati sono dei ttgo lora 2.1.6, e per alcuni scopi anche dei Arduino nano. 
 
 ## I dispositivi mobili 
-Essi vengono dati ai lavoratori che entrano del tunnel e, usando un set di sensori biomedici, monitorano lo stato di salute globale tramite una rete neurale costruita ad hoc partendo da uno dei dataset più validati disponibili in rete. Questi dispositivi usano BLE per permettere di interagire con essi tramite smartphone. Il progetto per platformIO dei dispositivi mobili è chiamato Braccialetto.
+Essi vengono dati ai lavoratori che entrano del tunnel e, usando un set di sensori biomedici, monitorano lo stato di salute globale tramite una rete neurale costruita ad hoc partendo da uno dei dataset più validati disponibili in rete. Questi dispositivi usano BLE per permettere di interagire con essi tramite smartphone. 
 
 ## I dispositivi fissi 
-Essi, anche chiamati ancore, sono la parte principale del progetto. Nella versione definitiva utilizzano BLE sia per il settaggio iniziale con le altre ancore, sia per comunicare con i dispositivi mobili. Lo scambio di messaggi avviene tramite LoRa, utilizzando un algorirmo adhoc progettato dal team. Il progetto per platformIO dei dispositivi fissi è chiamato Ancore. Modificare riga
+Essi, anche chiamati ancore, sono la parte principale del progetto. Nella versione definitiva utilizzano BLE sia per il settaggio iniziale con le altre ancore, sia per comunicare con i dispositivi mobili. Lo scambio di messaggi avviene tramite LoRa, utilizzando un algorirmo adhoc progettato dal team. 
 
-la prima e l'ultima ancora del tunnel non usano ble e sono connessi alla rete per poter inviare e ricevere messaggi dal back end grazie anche a un server https avviato su essi.
+La prima e l'ultima ancora del tunnel (gateway) non usano ble e sono connessi alla rete per poter inviare e ricevere messaggi dal back end grazie anche a un server HTTPs avviato su esse. 
 
 ## Back end
 
@@ -18,15 +18,16 @@ Esso è stato realizzato in Python usando una combinazione della libreria Flask 
 
 ## Front end 
 
-E' stato totalmente realizzato in html javascripy e css senza l'utilizzo di framework, come una single page application dalla quale è possibile monitorare lo stato delle persone all'interno del tunnel.
+E' stato totalmente realizzato in HTML Javascript e CSS senza l'utilizzo di framework, come una single page application dalla quale è possibile monitorare lo stato delle persone all'interno del tunnel. 
 
 # Organizzazione della repo 
 Di seguito si espone come è organizzato il codice della repo e come funziona l'installazione del sistema.
 
 ## Ancore
 
-Il codice per le ancore è contenuto nella cartella Ancore. una volta flashata l'ancora e pronta per essere installata.
-I gateway sono caratterizzati da due codici specifici contenuti nelle cartelle "gateway" e "terminatore di destra" 
+Il codice per le ancore è contenuto nella cartella Ancore. Una volta flashata l'ancora è pronta per essere installata. Decommenta riga 408 per non permettere all'ancora di cercare altre ancore per il settaggio.
+
+I gateway sono caratterizzati da due codici specifici contenuti nelle cartelle "gateway" e "terminatore di destra". Cambia ssid e pass all'interno del codice per fare in modo che si possano connettere ad un'altra rete. Sostituisci l'url in riga 56 con l'url del server in locale.
 Infine la cartella "reset ancore" contiene il codice che serve per resettare i dati che le ancore si salvano nella memoria a lungo tempo.
 
 ##  Dispositvi mobili
