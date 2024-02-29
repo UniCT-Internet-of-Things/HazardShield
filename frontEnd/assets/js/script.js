@@ -1,4 +1,4 @@
-let ip = "151.97.147.236:5000";
+let ip = "192.168.70.18:5000";
 let a =  document.querySelectorAll('path');
 let green = '#00ff00';
 let red = '#ff0000';
@@ -166,7 +166,7 @@ function appStart(){
     getWorkers('http://' + ip + '/get_all_names');
 }
 
-appStart();
+
     
 //creazione dashboard
 let dashboard = document.querySelector('.right');
@@ -1054,8 +1054,6 @@ function createMap(segNum, segLen){
     }, 500);
 }
 
-
-
 /*
 Anum >= minAnum => Adist <= 8
 
@@ -1158,11 +1156,11 @@ function refreshStats(){
         let aVal = document.querySelectorAll('.mainInfo > div >.info')[2].innerHTML = "Ancora: " + data.anchor;
 
         let meters = 0;
-        meters = Number(data.anchor * Number(anchorDistance)).toPrecision(3);
+        meters = Number(data.anchor * Number(anchorDistance)).toPrecision(4);
         console.log(Number(meters ));
         console.log(Number(anchorDistance));
-        console.log(Number(meters + anchorDistance));
-        console.log(Number(meters - anchorDistance));
+        console.log(Number(meters + anchorDistance / 2));
+        console.log(Number(meters - anchorDistance / 2));
 
 
 
@@ -1246,10 +1244,10 @@ function putMacAddress(url, data) {
 
 
 setInterval(function(){
-    //generator();
+    generator();
 }, 3000);
 function generator(){
-    let id = Math.floor(Math.random() * 3) + 1;
+    let id = Math.floor(Math.random() * 1) + 1;
     let mac = Math.floor(Math.random() * 100000);
     let temp = Math.floor(Math.random() * 100);
     let sat = Math.floor(Math.random() * 100);
@@ -1289,4 +1287,45 @@ function generator(){
 
     refreshStats();
     handleDots(anchor, id);
+}
+
+document.querySelector('.confirmLogin').addEventListener('click', function(){
+    let name = document.querySelector('input[name = "logName"]').value;
+    let pw = document.querySelector('input[name = "logPassword"]').value;
+    afterLogin(name, pw);
+});
+
+function afterLogin(name, pw){
+    let data = {
+        "username" : name,
+        "password" : pw
+    }
+    let url = 'http://' + ip + '/login';
+fetch(url, {
+  method: 'POST',
+  body: JSON.stringify(data),
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+  .then(response => response.json())
+  .then(data => {
+    console.log(data.status);
+    if (data.status == "ok") {
+        console.log('ok');
+        appStart();
+
+        document.querySelector('.login').style.display = "none";
+        document.querySelector('.mainVisible').style.display = "flex";
+        document.querySelector('.footerCompressed').style.display = "flex";
+    }
+    else if (data.status == "error") {
+        alert("Credenziali errate");
+        document.querySelector('input[name = "logName"]').value = "";
+        document.querySelector('input[name = "logPassword"]').value = "";
+    }
+  })
+  .catch(error => {
+    // Handle any errors
+  });
 }
