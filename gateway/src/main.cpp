@@ -4,7 +4,7 @@
 #include <HTTPClient.h>
 #include <LoRa.h>
 #include "esp_http_server.h"
-
+#include <ArduinoJson.h>
 #include <list>
 
 #include <Preferences.h>
@@ -19,9 +19,9 @@
 #include <functions/function.cpp>
 
 //SSID of your network
-char ssid[] = "Redmi Note 12 5G";
+char ssid[] = "UniCT-Team";
 //password of your WPA Network
-char pass[] = "ciccio2305";
+char pass[] = "LabROBO15/16";
 
 #define ss 18
 #define rst 23
@@ -53,7 +53,7 @@ extern BLEScan *pBLEScan;
 BLECharacteristic *pTemperatureCharacteristic;
 
 std::list<char*> messaggi_in_arrivo;
-String base_url="http://192.168.113.129:5000/";
+String base_url="http://192.168.70.18:5000/";
 std::list<struct_message*> messages_send;
 
 
@@ -71,22 +71,11 @@ void handle_queaue(){
   memcpy(current, incoming, sizeof(struct_message));
 
   bool ho_inviato_un_message=false;
-  Serial.println("type:"+String(current->type));
-  Serial.println("original_sender:"+String(current->original_sender));
-  Serial.println("dest:"+String(current->dest));
-  Serial.println("source:"+String(current->source));
 
   if (String(current->dest).toInt() == pref.getInt("id")&&
       String(current->source).toInt() == id+1){
 
     Serial.println("Message for me");
-    Serial.println(current->text);
-    Serial.println(current->type);
-    Serial.println(current->original_sender);
-    Serial.println(current->source);
-    Serial.println(current->dest);
-    Serial.println(current->messageCount);
-
     if(String(current->type)=="ACK"){
       for (std::list<struct_message*>::iterator it = messages_send.begin(); it != messages_send.end(); ++it){
         if(String((*it)->messageCount)==String(current->text)){
@@ -280,7 +269,63 @@ esp_err_t post_handler(httpd_req_t *req)
         return ESP_FAIL;
     }
     Serial.println(content);
+    String contenuto(content);
+    contenuto.replace("\%3A", ":");
+    
+    JsonDocument doc;
+    doc.clear();
 
+    DeserializationError error = deserializeJson(doc, contenuto);
+    
+    if (error) {
+      Serial.print(F("deserializeJson() failed: "));
+      Serial.println(error.c_str());
+      const char resp[] = "URI POST Response";
+      httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);
+      return ESP_FAIL;
+    }
+
+    char dest[200]; 
+    char text[200];
+    
+    
+    serializeJson(doc["dest"], dest);
+    serializeJson(doc["msg"], text);
+    
+    String cose(dest);
+    cose.replace("\"", "");
+    
+    struct_message* inoltro=new struct_message();
+    memset(inoltro,0,sizeof(struct_message));
+
+    memcpy(inoltro->type, "MSG_to_bracelet\0", 16);
+    memcpy(inoltro->dest, cose.c_str(),cose.length()+1);
+
+    memcpy(inoltro->original_sender, "0\0",2);
+    memcpy(inoltro->source, "0\0",2);
+
+    memcpy(inoltro->messageCount, String(msgCount).c_str(), String(msgCount).length()+1);  
+    msgCount++;
+    pref.putInt("msgCount",msgCount);
+
+    memcpy(inoltro->touched, "0\0", 2);
+    memcpy(inoltro->text, text, String(text).length()+1);
+
+    
+
+    messages_send.push_back(inoltro);
+    
+
+    char buffer[sizeof(struct_message)+1];
+    memcpy(buffer, inoltro, sizeof(struct_message));
+    buffer[sizeof(struct_message)]='\0';
+    
+    LoRa.beginPacket();
+    for(int i=0;i<sizeof(struct_message)+1;i++){
+      LoRa.write(buffer[i]);
+    }
+    LoRa.endPacket();
+    LoRa.receive();
     /* Send a simple response */
     const char resp[] = "URI POST Response";
     httpd_resp_send(req, resp, HTTPD_RESP_USE_STRLEN);

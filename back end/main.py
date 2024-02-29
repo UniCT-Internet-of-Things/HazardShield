@@ -22,13 +22,13 @@ CORS(app)
 mongo = PyMongo.MongoClient('localhost:27017', 27017)
 
 global ws
-ws=None
+ws=[]
 
 
 def send_request():
-
+    global ws
+        
     while True:
-        global ws
         if(ws is not None):
             print("sending request")
             ws.send('Hello, world!')
@@ -55,11 +55,10 @@ def add_macAddresss():
 
 @sock.route('/get_all')
 def echo(websocket):
-    
+    global ws
+    ws.append(websocket)
     while True:
-        global ws
-        ws=websocket
-        data = ws.receive()
+        data = websocket.receive()
         print(data)
 
 @app.route('/post_data', methods=['POST'])
@@ -90,9 +89,14 @@ def post_data():
             data_to_insert["sensor_data"]=data[key][key2]
             data_to_insert["sensor_id"]=key
             global ws
-            if(ws is not None):
-                print("sending request")
-                ws.send(data_to_insert)
+            for socket in ws:
+                if(socket is not None):
+                    try:
+                        print("sending request")
+                        socket.send(json.dumps(data_to_insert))
+                    except:
+                        ws.remove(socket)   
+                        print("errore")
 
             Worker.insert_one(data_to_insert)
             data_to_insert={}
@@ -124,7 +128,16 @@ def put_worker():
 
     return 'Dati ricevuti con successo!'
 
+@app.route('/send_msg', methods=['POST'])
+def send_msg():
+    data = request.data.decode('utf-8')
+    print(data)
+    #convert data from string to dictionary
+    data = json.loads(data)
+    data={"msg":data["msg"],"dest":data["dest"]}
+    requests.post(url="http://"+gateway_ip+":80/receive_data",json=data)
 
+    return 'Dati ricevuti con successo!'
 
 @app.route('/get_all_names', methods=['GET'])
 def get_all_names():
