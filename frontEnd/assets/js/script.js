@@ -912,9 +912,9 @@ document.querySelector('input[name = "tunnelLen"]').addEventListener('keyup', fu
     }
 
     let dist = tunnelLen / (minAnchorNum+1);
-    dist = dist.toFixed(2);
     if (dist > 8) dist = 8;
     document.querySelector(".anchorDistance").innerHTML = dist;
+    anchorDistance = dist;
     document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(0, 98, 255, 0.8)";
 });
 
@@ -922,6 +922,7 @@ document.querySelector('input[name = "anchorsNum"]').addEventListener('keyup', f
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
     
     anchorDistance = Number(tunnelLen) / ((Number(anchorsNum) + 1));
+    console.log("anchor dist: " + anchorDistance);
     document.querySelector(".anchorDistance").innerHTML = anchorDistance.toFixed(3);
     if (anchorDistance > 8  || anchorsNum < minAnchorNum) {
         document.querySelector(".submitMapInfo").style.backgroundColor = "rgba(255, 0, 115, 0.8)";
@@ -938,7 +939,7 @@ confirmMapInfo.addEventListener('click', function(){
     tunnelLen = document.querySelector('input[name = "tunnelLen"]').value;
     anchorsNum = document.querySelector('input[name = "anchorsNum"]').value;
 
-    anchorDistance = Number(tunnelLen) / (Number(anchorsNum));
+    anchorDistance = Number(tunnelLen) / (Number(anchorsNum) + 1);
     sectionToDisplay = Math.ceil(Number(tunnelLen) / Number(anchorDistance));
     /*
     sens = Number(tunnelLen) / (Number(anchorsNum) + 1);
@@ -1108,21 +1109,20 @@ socket.onmessage = function(event) {
         "anchor" : anchor
     } 
 
+
     if (datas.length == 0) datas.push(newData);
     else {
         for (var i in datas){
-            if (datas[i].id == id && datas[i].anchor == anchor){
+            if (datas[i].id == id){
                 datas[i] = newData;
+                break;
             }
-            else if(datas[i].id == id && datas[i].anchor != anchor ){
-                datas.push(newData);
-               
-            }
-
             else if (i == datas.length - 1){
                 datas.push(newData);
             }
         }
+        
+        console.log(datas);
     }
 
     refreshStats();
@@ -1159,7 +1159,14 @@ function refreshStats(){
 
         let meters = 0;
         meters = Number(data.anchor * Number(anchorDistance)).toPrecision(3);
-        document.querySelectorAll('.mainInfo > div > .info')[3].innerHTML = "Posizione: (" + Number(meters - anchorDistance) + "m, " + Number(meters + anchorDistance) + "m)"; 
+        console.log(Number(meters ));
+        console.log(Number(anchorDistance));
+        console.log(Number(meters + anchorDistance));
+        console.log(Number(meters - anchorDistance));
+
+
+
+        document.querySelectorAll('.mainInfo > div > .info')[3].innerHTML = "Posizione: (" + Number(meters - anchorDistance).toPrecision(3) + "m, " + Number(meters + anchorDistance).toPrecision(3) + "m)"; 
     }
     deathAlert();
 }
@@ -1239,7 +1246,7 @@ function putMacAddress(url, data) {
 
 
 setInterval(function(){
-    generator();
+    //generator();
 }, 3000);
 function generator(){
     let id = Math.floor(Math.random() * 3) + 1;
