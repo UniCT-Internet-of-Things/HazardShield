@@ -24,6 +24,20 @@ mongo = PyMongo.MongoClient('localhost:27017', 27017)
 global ws
 ws=[]
 
+@app.route('/login', methods=['POST'])
+def login():
+    print(request)
+    data = request.data.decode('utf-8')
+    data = json.loads(data)
+    personal=mongo.workers.login_cred
+    print(data)
+    result=personal.find_one({"username":data["username"]})
+    if result["password"]==data["password"]:
+        print("login effettuato")
+        return json.dumps({"status":"ok"})
+    else:
+        print("login fallito")
+        return json.dumps({"status":"error"})
 
 def send_request():
     global ws

@@ -6,3 +6,12 @@ Content-Type: application/json
     "msg":{"34:85:18:7a:97:c1":"sono ioa"},
     "dest":"1"
 }
+
+
+
+POST http://192.168.70.18:5000/LOGIN HTTP/1.1   
+
+{
+    "username":"matteo",
+    "password":"molto segreta"
+}
